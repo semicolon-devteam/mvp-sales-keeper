@@ -1,4 +1,4 @@
-# 매출지킴이 (Sales Guardian)
+# 매출지킴이 (Sales Keeper)
 
 > 자영업자의 실제 순이익을 지키는 스마트 솔루션
 
@@ -47,7 +47,7 @@
 ## 프로젝트 구조
 
 ```
-sales-guardian/
+MVP-sales-keeper/
 ├── apps/
 │   ├── web/             # Next.js PWA (모바일+PC 통합)
 │   └── backend/         # Node.js + FastAPI
