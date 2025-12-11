@@ -1,0 +1,21 @@
+{
+    "name": "Sales Keeper - 매출 지킴이",
+    "short_name": "Sales Keeper",
+    "description": "소상공인을 위한 간편 매출 관리 서비스",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#0ca678",
+    "icons": [
+        {
+            "src": "/icons/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/icons/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

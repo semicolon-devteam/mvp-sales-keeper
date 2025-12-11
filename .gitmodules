@@ -1,0 +1,6 @@
+[submodule ".claude/sax-core"]
+	path = .claude/sax-core
+	url = https://github.com/semicolon-devteam/sax-core.git
+[submodule ".claude/sax-mvp"]
+	path = .claude/sax-mvp
+	url = https://github.com/semicolon-devteam/sax-mvp.git
