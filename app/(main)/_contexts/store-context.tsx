@@ -96,7 +96,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         } finally {
             setIsLoading(false);
         }
-    }, [currentStore, createDefaultStoreImpl]); // Dependency on helper
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentStore, createDefaultStoreImpl]); // Dependency on helper (supabase is stable)
 
     // Helper to avoid circular dependency in useEffect/useCallback
     async function createDefaultStoreImpl() {
@@ -197,7 +198,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         fetchStores();
-    }, []); // Run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Run once on mount (fetchStores is stable via useCallback)
 
     const value = {
         currentStore,

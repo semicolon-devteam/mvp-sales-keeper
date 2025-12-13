@@ -92,6 +92,7 @@ export function TimelinePostEditor({ onPostCreated }: { onPostCreated: () => voi
                     <Box style={{ position: 'relative', width: 'fit-content' }}>
                         <Image
                             src={URL.createObjectURL(file)}
+                            alt="업로드 미리보기"
                             radius="md"
                             h={120}
                             w="auto"
