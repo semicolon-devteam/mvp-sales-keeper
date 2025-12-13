@@ -103,9 +103,9 @@ export default function CalendarPage() {
         setMonth(newMonth);
     };
 
-    const getDayProps = (date: Date) => ({
-        selected: dayjs(date).isSame(date, 'date'),
-        onClick: () => setDate(date),
+    const getDayProps = (day: Date) => ({
+        selected: date ? dayjs(day).isSame(date, 'date') : false,
+        onClick: () => setDate(day),
     });
 
     // Helper: Get Day Status Color
@@ -288,8 +288,7 @@ export default function CalendarPage() {
                 <Calendar
                     key={fixedCosts.map(c => c.id).join('-')} // Force re-render when costs change
                     static
-                    value={date}
-                    onChange={setDate}
+                    date={month}
                     onDateChange={handleMonthChange}
                     getDayProps={getDayProps}
                     renderDay={renderDay}
