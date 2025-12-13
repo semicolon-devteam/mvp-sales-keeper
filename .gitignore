@@ -43,3 +43,23 @@ next-env.d.ts
 # SEMO system (local only)
 semo-system/
 .claude/
+
+# IDE
+.vscode/
+
+# Test files
+test-*.js
+test-*.json
+test-screenshots/
+TEST-REPORT.md
+public/test-*.xlsx
+
+# Windows artifacts
+nul
+public/static/tesseract/nul
+
+# Tesseract binary files (large)
+public/static/tesseract/*.wasm
+public/static/tesseract/*.traineddata
+public/static/tesseract/tesseract-core-*.js
+public/static/tesseract/tesseract-core-*.wasm.js

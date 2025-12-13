@@ -24,9 +24,11 @@ export async function updateMemberDetails(memberId: string, alias: string, hourl
 export async function getSchedules(storeId: string, start: string, end: string) {
     const supabase = await createClient();
 
+    // Note: No FK relationship between work_schedules and store_members
+    // Fetching schedules without join, member info handled client-side
     const { data, error } = await supabase
         .from('work_schedules')
-        .select('*, store_members(alias, user_id, color, role)') // Join to get staff info
+        .select('*')
         .eq('store_id', storeId)
         .gte('start_time', start)
         .lte('end_time', end)
@@ -36,7 +38,7 @@ export async function getSchedules(storeId: string, start: string, end: string) 
         console.error('Error fetching schedules:', error);
         return [];
     }
-    return data;
+    return data || [];
 }
 
 export async function createSchedule(storeId: string, userId: string, startTime: string, endTime: string, memo?: string) {
@@ -124,13 +126,15 @@ export async function clockOut(logId: string) {
 export async function getWorkLogs(storeId: string, limit = 20) {
     const supabase = await createClient();
 
+    // Note: No FK relationship between work_logs and store_members
+    // Member info handled client-side via members list
     const { data, error } = await supabase
         .from('work_logs')
-        .select('*, store_members(alias, user_id, color)')
+        .select('*')
         .eq('store_id', storeId)
         .order('clock_in', { ascending: false })
         .limit(limit);
 
     if (error) return [];
-    return data;
+    return data || [];
 }

@@ -1,52 +1,56 @@
 import { ParsedSaleData, ParsedSaleItem } from './excel-parser';
 
-// Tesseract is loaded globally in layout.tsx via <Script>
+// Tesseract.js v6 API - 로컬 파일 사용
 export const parseReceipt = async (file: File | string, onProgress?: (status: string) => void): Promise<ParsedSaleData> => {
-    // 1. Recognize Text
-    if (onProgress) onProgress('AI 엔진 초기화 준비 중... (글로벌 엔진 확인)');
+    if (onProgress) onProgress('AI OCR 엔진 로드 중...');
 
-    // Timeout Promise
-    const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("AI 엔진 다운로드가 너무 오래 걸립니다. 인터넷 연결을 확인하거나 잠시 후 다시 시도해주세요.")), 30000)
-    );
+    // Dynamic import for Tesseract.js v6
+    const { createWorker } = await import('tesseract.js');
 
-    // Ensure Tesseract is available
-    const Tesseract = (window as any).Tesseract;
-    if (!Tesseract) {
-        throw new Error("AI 엔진(Tesseract)이 로드되지 않았습니다. 새로고침 후 다시 시도해주세요.");
-    }
+    if (onProgress) onProgress('OCR Worker 생성 중...');
 
-    // Explicitly using connection-local files to avoid CDN timeouts
-    // Files copied to public/static/tesseract/ from node_modules and downloaded manually
-    const workerPromise = Tesseract.createWorker('kor', 1, {
-        workerPath: window.location.origin + '/static/tesseract/worker.min.js',
-        // Use the large Core file as proven by diagnostic page
-        corePath: window.location.origin + '/static/tesseract/tesseract-core.wasm.js',
-        langPath: window.location.origin + '/static/tesseract/',
-        gzip: true,
-        logger: (m: any) => {
-            console.log(m);
-            if (onProgress) {
-                const pct = m.progress ? Math.round(m.progress * 100) : 0;
-                const statusMap: Record<string, string> = {
-                    'loading tesseract core': 'Tesseract 엔진(Core) 다운로드 중...',
-                    'initializing tesseract': '엔진 시동 거는 중...',
-                    'loading language traineddata': '한글 데이터(20MB) 다운로드 중...',
-                    'initializing api': 'API 초기화 중...',
-                    'recognizing text': '글자 인식 중...',
-                };
-                const msg = statusMap[m.status] || m.status;
-                onProgress(`${msg} ${pct > 0 ? `(${pct}%)` : ''}`);
+    let worker: Awaited<ReturnType<typeof createWorker>> | null = null;
+    let text = '';
+
+    try {
+        // CDN 기본값 사용 (로컬 파일 설정 제거)
+        // Tesseract.js v6은 자동으로 CDN에서 필요한 파일을 로드함
+        console.log('[OCR] Creating worker with default CDN paths...');
+
+        worker = await createWorker('kor', 1, {
+            logger: (m: any) => {
+                console.log('[Tesseract]', m);
+                if (onProgress && m.status) {
+                    const pct = m.progress ? Math.round(m.progress * 100) : 0;
+                    const statusMap: Record<string, string> = {
+                        'loading tesseract core': 'OCR 엔진 로드 중...',
+                        'initializing tesseract': '엔진 초기화 중...',
+                        'loading language traineddata': '한글 인식 데이터 로드 중...',
+                        'loaded language traineddata': '한글 데이터 로드 완료!',
+                        'initializing api': 'API 초기화 중...',
+                        'recognizing text': '글자 인식 중...',
+                    };
+                    const msg = statusMap[m.status] || m.status;
+                    onProgress(pct > 0 ? `${msg} (${pct}%)` : msg);
+                }
             }
+        });
+
+        console.log('[OCR] Worker created successfully!');
+        if (onProgress) onProgress('이미지에서 글자 인식 중...');
+
+        const result = await worker.recognize(file);
+        text = result.data.text;
+
+        console.log('[OCR] Recognition complete!');
+    } catch (error) {
+        console.error('[OCR] Error:', error);
+        throw new Error(`OCR 처리 중 오류: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+        if (worker) {
+            await worker.terminate();
         }
-    });
-
-    // Race between worker creation and timeout
-    const worker: any = await Promise.race([workerPromise, timeout]);
-
-    if (onProgress) onProgress('글자 인식을 시작합니다...');
-    const { data: { text } }: { data: { text: string } } = await worker.recognize(file as any);
-    await worker.terminate();
+    }
 
     console.log("OCR Result:", text);
 

@@ -13,6 +13,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/ko';
 import { ExpenseAnalytics } from './_components/ExpenseAnalytics';
 import { ManualExpenseModal } from './_components/ManualExpenseModal';
+import { EmptyState } from '../_components/EmptyState';
 
 export default function ExpensesPage() {
     const router = useRouter();
@@ -122,17 +123,13 @@ export default function ExpensesPage() {
 
             {/* Empty State */}
             {expenses.length === 0 && !loading ? (
-                <Paper p="xl" radius="xl" bg="white" ta="center">
-                    <Stack align="center" gap="md">
-                        <ThemeIcon size={80} radius="circle" variant="light" color="gray">
-                            <IconCreditCard size={40} />
-                        </ThemeIcon>
-                        <div>
-                            <Text fw={700} size="lg">지출 내역이 없습니다.</Text>
-                            <Text c="dimmed" size="sm">영수증을 촬영하여 지출을 등록해보세요.</Text>
-                        </div>
-                    </Stack>
-                </Paper>
+                <EmptyState
+                    icon={<IconCreditCard size={36} />}
+                    title="지출 내역이 없습니다"
+                    description="영수증을 촬영하거나 직접 입력하여 지출을 등록해보세요."
+                    actionLabel="지출 입력하기"
+                    onAction={() => setManualModalOpened(true)}
+                />
             ) : (
                 /* Grouped List */
                 <Stack gap="lg">

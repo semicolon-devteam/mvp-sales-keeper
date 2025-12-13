@@ -1,8 +1,9 @@
 'use client';
 
 import { Paper, Title, Text, Button, Group, Stack, Badge, Modal, Select, TextInput, ActionIcon, Loader } from '@mantine/core';
-import { IconPlus, IconTrash, IconClock } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconClock, IconCalendarEvent } from '@tabler/icons-react';
 import { Calendar } from '@mantine/dates';
+import { EmptyState } from '../../_components/EmptyState';
 import { useState, useEffect, useCallback } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { useStore } from '../../_contexts/store-context';
@@ -78,7 +79,7 @@ export function ShiftScheduler() {
     };
 
     // Calendar Indicators
-    // Doing "dots" requires fetching the whole month. 
+    // Doing "dots" requires fetching the whole month.
     // For MVP, let's keep it simple: just show list on right.
 
     return (
@@ -119,14 +120,16 @@ export function ShiftScheduler() {
                     <Stack gap="sm">
                         {loading ? <Loader color="teal" size="sm" mx="auto" /> :
                             schedules.length === 0 ? (
-                                <Stack align="center" justify="center" h={200} opacity={0.5}>
-                                    <IconClock size={40} />
-                                    <Text size="sm">일정이 없습니다.</Text>
-                                </Stack>
+                                <EmptyState
+                                    icon={<IconCalendarEvent size={32} />}
+                                    title="등록된 일정이 없습니다"
+                                    description="+ 버튼을 눌러 근무 일정을 추가하세요."
+                                    compact
+                                />
                             ) : (
                                 schedules.map(sch => {
                                     const member = members.find(m => m.user_id === sch.user_id);
-                                    const memberName = sch.store_members?.alias || (member?.role === 'owner' ? '사장님' : '직원');
+                                    const memberName = member?.alias || (member?.role === 'owner' ? '사장님' : '직원');
 
                                     return (
                                         <Paper key={sch.id} p="sm" bg="rgba(255,255,255,0.05)">

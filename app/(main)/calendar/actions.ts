@@ -14,7 +14,9 @@ const SETTLEMENT_DELAY: Record<string, number> = {
     'excel': 0
 };
 
-export async function getMonthlyData(date: Date, storeId?: string, mode: 'sales' | 'cashflow' = 'sales') {
+export async function getMonthlyData(dateInput: Date | string, storeId?: string, mode: 'sales' | 'cashflow' = 'sales') {
+    // Handle both Date object and ISO string (serialized from client)
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
 

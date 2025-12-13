@@ -8,6 +8,8 @@ import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { fetchStrategyData, saveItemCost } from './strategy-actions';
 import { useStore } from '../_contexts/store-context';
+import { EmptyState } from '../_components/EmptyState';
+import { IconChartBar } from '@tabler/icons-react';
 
 export default function StrategyPage() {
     const { currentStore } = useStore();
@@ -118,9 +120,11 @@ export default function StrategyPage() {
                         </Text>
 
                         {data.length === 0 ? (
-                            <Stack align="center" justify="center" h={300}>
-                                <Text c="dimmed">데이터가 부족합니다. 매출을 먼저 업로드해주세요.</Text>
-                            </Stack>
+                            <EmptyState
+                                icon={<IconChartBar size={36} />}
+                                title="분석할 데이터가 없습니다"
+                                description="매출 페이지에서 메뉴별 매출을 먼저 입력해주세요."
+                            />
                         ) : (
                             <div style={{ flex: 1, width: '100%', minHeight: 350 }}>
                                 <ResponsiveContainer width="100%" height="100%">

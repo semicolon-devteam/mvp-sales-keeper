@@ -6,7 +6,7 @@ import { Calendar } from '@mantine/dates';
 import { getMonthlyData, getDailyDetails, getFixedCosts } from './actions';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ko';
-import { IconCoin, IconMessageCircle, IconBuildingStore, IconSettings } from '@tabler/icons-react';
+import { IconCoin, IconMessageCircle, IconBuildingStore, IconSettings, IconCash } from '@tabler/icons-react';
 import { useStore } from '../_contexts/store-context';
 import { AIDailyBriefing } from './_components/AIDailyBriefing';
 import { TimelineSummaryCard } from './_components/TimelineSummaryCard';
@@ -130,6 +130,10 @@ export default function CalendarPage() {
         // Check if there is a fixed cost today
         const hasFixedCost = fixedCosts.some(fc => Number(fc.day_of_month) === dayNum);
 
+        // 정산일 정보
+        const settlements = getSettlementInfo(dayDate);
+        const hasSettlement = settlements.length > 0;
+
         return (
             <div
                 style={{
@@ -147,17 +151,33 @@ export default function CalendarPage() {
             >
                 <Text size="sm" c={status?.c || 'gray.4'}>{dayNum}</Text>
 
-                {/* Fixed Cost Indicator */}
+                {/* Fixed Cost Indicator (빨간 점) */}
                 {hasFixedCost && (
                     <Box
                         style={{
                             position: 'absolute',
-                            top: 6,
-                            right: 6,
+                            top: 4,
+                            right: 4,
                             width: 6,
                             height: 6,
                             borderRadius: '50%',
                             backgroundColor: '#EF4444',
+                            zIndex: 10
+                        }}
+                    />
+                )}
+
+                {/* 정산일 표시 (초록 점) */}
+                {hasSettlement && (
+                    <Box
+                        style={{
+                            position: 'absolute',
+                            top: 4,
+                            left: 4,
+                            width: 6,
+                            height: 6,
+                            borderRadius: '50%',
+                            backgroundColor: '#10B981',
                             zIndex: 10
                         }}
                     />
@@ -176,6 +196,31 @@ export default function CalendarPage() {
 
     // Filter today's fixed costs
     const todaysFixedCosts = date ? fixedCosts.filter(fc => fc.day_of_month === dayjs(date).date()) : [];
+
+    // 정산일 계산 (배달 플랫폼별)
+    const getSettlementInfo = (targetDate: Date) => {
+        const d = dayjs(targetDate);
+        const dayOfWeek = d.day(); // 0=일, 1=월, 2=화, 3=수, 4=목, 5=금, 6=토
+        const settlements: { platform: string; color: string; label: string }[] = [];
+
+        // 배달의민족: 매주 목요일
+        if (dayOfWeek === 4) {
+            settlements.push({ platform: 'baemin', color: '#2AC1BC', label: '배민' });
+        }
+        // 요기요: 매주 화요일
+        if (dayOfWeek === 2) {
+            settlements.push({ platform: 'yogiyo', color: '#FA0050', label: '요기요' });
+        }
+        // 쿠팡이츠: 매일 정산 (D+2) - 주말 제외
+        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+            settlements.push({ platform: 'coupang', color: '#EE1744', label: '쿠팡' });
+        }
+
+        return settlements;
+    };
+
+    // 선택된 날짜의 정산 정보
+    const selectedSettlements = date ? getSettlementInfo(date) : [];
 
     // Monthly Totals Calculation
     const monthlyTotalSales = Object.values(data).reduce((acc, curr) => acc + curr.sales, 0);
@@ -300,6 +345,25 @@ export default function CalendarPage() {
                     }}
                     locale="ko"
                 />
+                {/* 범례 */}
+                <Group justify="center" gap="md" mt="xs" pb="xs">
+                    <Group gap={4}>
+                        <Box w={8} h={8} style={{ borderRadius: '50%', backgroundColor: '#10B981' }} />
+                        <Text size="xs" c="dimmed">정산일</Text>
+                    </Group>
+                    <Group gap={4}>
+                        <Box w={8} h={8} style={{ borderRadius: '50%', backgroundColor: '#EF4444' }} />
+                        <Text size="xs" c="dimmed">고정지출</Text>
+                    </Group>
+                    <Group gap={4}>
+                        <Box w={10} h={10} style={{ borderRadius: 2, backgroundColor: 'rgba(20, 184, 166, 0.3)' }} />
+                        <Text size="xs" c="dimmed">흑자</Text>
+                    </Group>
+                    <Group gap={4}>
+                        <Box w={10} h={10} style={{ borderRadius: 2, backgroundColor: 'rgba(239, 68, 68, 0.3)' }} />
+                        <Text size="xs" c="dimmed">적자</Text>
+                    </Group>
+                </Group>
             </Paper>
 
             {/* Daily Summary & Details */}
@@ -321,6 +385,26 @@ export default function CalendarPage() {
                             sales={selectedData.sales}
                             expense={selectedData.expense}
                         />
+                    )}
+
+                    {/* 정산일 안내 섹션 */}
+                    {selectedSettlements.length > 0 && (
+                        <Paper radius="lg" p="md" bg="rgba(16, 185, 129, 0.1)" style={{ border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                            <Group gap="sm" mb="xs">
+                                <IconCash size={18} color="#10B981" />
+                                <Text fw={700} c="teal.4" size="sm">오늘 정산 예정</Text>
+                            </Group>
+                            <Group gap="xs">
+                                {selectedSettlements.map(s => (
+                                    <Badge key={s.platform} color={s.platform === 'baemin' ? 'teal' : s.platform === 'yogiyo' ? 'red' : 'orange'} variant="light">
+                                        {s.label} 정산일
+                                    </Badge>
+                                ))}
+                            </Group>
+                            <Text size="xs" c="dimmed" mt="xs">
+                                * 정산 시점은 플랫폼 정책에 따라 변동될 수 있습니다
+                            </Text>
+                        </Paper>
                     )}
 
                     {/* Fixed Cost Warning Section */}

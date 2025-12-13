@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import { ColorSchemeScript, MantineProvider } from "@mantine/core";
 import { theme } from "./theme";
 import "./globals.css";
@@ -48,10 +47,6 @@ export default function RootLayout({
           {children}
           <InstallPrompt />
         </MantineProvider>
-        <Script
-          src="/static/tesseract/tesseract.min.js"
-          strategy="beforeInteractive"
-        />
       </body>
     </html>
   );

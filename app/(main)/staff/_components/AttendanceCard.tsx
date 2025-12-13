@@ -3,6 +3,7 @@
 import { Paper, Title, Text, Button, Group, Stack, Badge, Loader, ThemeIcon } from '@mantine/core';
 import { IconClockPlay, IconClockStop, IconHistory } from '@tabler/icons-react';
 import { useStore } from '../../_contexts/store-context';
+import { EmptyState } from '../../_components/EmptyState';
 import { useState, useEffect, useCallback } from 'react';
 import { getStoreMembers } from '../../store/members/actions';
 import { getTodayLog, clockIn, clockOut, getWorkLogs } from '../actions';
@@ -14,11 +15,13 @@ export function AttendanceCard() {
     const [currentLog, setCurrentLog] = useState<any>(null);
     const [logs, setLogs] = useState<any[]>([]);
     const [userMemberInfo, setUserMemberInfo] = useState<any>(null);
+    const [members, setMembers] = useState<any[]>([]);
 
     const fetchMyInfo = useCallback(async () => {
         if (!currentStore) return;
-        const members = await getStoreMembers(currentStore.id);
-        const me = members.find((m: any) => m.user_id === user?.id);
+        const memberList = await getStoreMembers(currentStore.id);
+        setMembers(memberList);
+        const me = memberList.find((m: any) => m.user_id === user?.id);
         setUserMemberInfo(me);
     }, [currentStore, user]);
 
@@ -118,12 +121,18 @@ export function AttendanceCard() {
             <Stack gap="sm">
                 <Text fw={700} c="gray.3" size="md">최근 근무 기록</Text>
                 {logs.length === 0 ? (
-                    <Text c="dimmed" ta="center" py="xl">아직 기록이 없습니다.</Text>
+                    <EmptyState
+                        icon={<IconHistory size={32} />}
+                        title="아직 근무 기록이 없습니다"
+                        compact
+                    />
                 ) : (
                     logs.map(log => {
                         const duration = log.clock_out
                             ? (dayjs(log.clock_out).diff(dayjs(log.clock_in), 'hour', true)).toFixed(1)
                             : '진행 중';
+                        const member = members.find(m => m.user_id === log.user_id);
+                        const memberName = member?.alias || (member?.role === 'owner' ? '사장님' : '직원');
 
                         return (
                             <Paper key={log.id} p="md" bg="rgba(255,255,255,0.05)" radius="md">
@@ -137,7 +146,7 @@ export function AttendanceCard() {
                                             {dayjs(log.clock_in).format('M/D')}
                                         </Badge>
                                         <Stack gap={0}>
-                                            <Text fw={700} c="white">{log.store_members?.alias || '직원'}</Text>
+                                            <Text fw={700} c="white">{memberName}</Text>
                                             <Text size="xs" c="dimmed">
                                                 {dayjs(log.clock_in).format('HH:mm')} ~ {log.clock_out ? dayjs(log.clock_out).format('HH:mm') : '...'}
                                             </Text>

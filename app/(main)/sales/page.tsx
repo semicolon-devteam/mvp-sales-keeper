@@ -14,6 +14,8 @@ import PCShareButton from './_components/PCShareButton';
 import { SmartSalesInput } from './_components/SmartSalesInput';
 import { DataUploadModal } from './_components/DataUploadModal';
 import { useStore } from '../_contexts/store-context';
+import { EmptyState } from '../_components/EmptyState';
+import { IconReceipt, IconHistory } from '@tabler/icons-react';
 import '@mantine/dates/styles.css';
 
 import { useRouter } from 'next/navigation';
@@ -408,7 +410,12 @@ export default function SalesPage() {
             <Stack gap="sm" mt="md">
                 <Text size="sm" c="dimmed" fw={700} px="xs">최근 입력 내역</Text>
                 {salesList.length === 0 ? (
-                    <Text size="xs" c="dimmed" ta="center" py="xl">입력된 내역이 없습니다.</Text>
+                    <EmptyState
+                        icon={<IconReceipt size={32} />}
+                        title="오늘 입력된 매출이 없습니다"
+                        description="위 입력창에서 매출을 입력하거나 엑셀을 업로드해보세요."
+                        compact
+                    />
                 ) : (
                     salesList.slice().reverse().map((sale) => ( // Show newest first
                         <Paper key={sale.id} radius="md" p="md">
@@ -470,7 +477,13 @@ function RecentActivityLog({ storeId }: { storeId: string }) {
         getRecentSalesActivity(storeId).then(setLogs);
     }, [storeId]);
 
-    if (logs.length === 0) return <Text size="xs" c="dimmed" px="md">최근 활동 내역이 없습니다.</Text>;
+    if (logs.length === 0) return (
+        <EmptyState
+            icon={<IconHistory size={32} />}
+            title="최근 활동 내역이 없습니다"
+            compact
+        />
+    );
 
     return (
         <Stack gap="xs">

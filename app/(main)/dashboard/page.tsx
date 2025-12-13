@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Title, Text, SimpleGrid, Group, Stack, Paper, ThemeIcon, Skeleton, ActionIcon, Box, Button, Grid, RingProgress } from '@mantine/core';
-import { IconRefresh, IconTrendingUp, IconReceipt, IconAlertCircle, IconArrowRight, IconChartPie, IconCalendarStats } from '@tabler/icons-react';
+import { IconRefresh, IconTrendingUp, IconReceipt, IconAlertCircle, IconArrowRight, IconChartPie, IconCalendarStats, IconSettings } from '@tabler/icons-react';
 import { getDashboardData } from './actions';
 import { useRouter } from 'next/navigation';
 import { SalesTrendGraph } from '../../components/SalesTrendGraph';
@@ -69,6 +69,19 @@ export default function DashboardPage() {
 
     return (
         <Stack gap="xl" pb="xl">
+            {/* 헤더 with 설정 버튼 */}
+            <Group justify="flex-end">
+                <ActionIcon
+                    variant="subtle"
+                    color="gray"
+                    size="lg"
+                    radius="xl"
+                    onClick={() => router.push('/settings')}
+                >
+                    <IconSettings size={20} />
+                </ActionIcon>
+            </Group>
+
             {/* 1. THE COCKPIT (Health + AI Console) */}
             <Grid gutter="md" align="stretch">
                 {/* Left: Health Gauge */}

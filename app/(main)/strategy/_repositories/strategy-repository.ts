@@ -41,17 +41,10 @@ export async function getMenuAnalysis(storeId: string) {
 
     if (salesError) throw salesError;
 
-    // 2. Fetch Menu Items (Cost Info)
-    const { data: menuItems, error: menuError } = await supabase
-        .from('menu_items')
-        .select('*')
-        .eq('store_id', storeId);
-
-    if (menuError) throw menuError;
-
-    // Map Menu Items for quick lookup
+    // Note: menu_items table doesn't exist in current schema
+    // Using sale_items data only with default cost = 0
+    // In future, could add menu_items table for cost tracking
     const menuMap = new Map<string, any>();
-    menuItems?.forEach(item => menuMap.set(item.name, item));
 
     // 3. Aggregate Sales Data
     const analysisMap = new Map<string, { quantity: number, revenue: number, unitPrices: number[] }>();
@@ -111,20 +104,10 @@ export async function getMenuAnalysis(storeId: string) {
     return result.sort((a, b) => b.revenue - a.revenue); // Sort by Revenue desc
 }
 
-export async function updateMenuCost(storeId: string, name: string, cost: number, price: number) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Unauthorized');
-
-    const { error } = await supabase
-        .from('menu_items')
-        .upsert({
-            store_id: storeId,
-            name: name,
-            cost: cost,
-            price: price,
-            // category: 'Main' // Optional: Could guess or let user edit later
-        }, { onConflict: 'store_id, name' });
-
-    if (error) throw error;
+export async function updateMenuCost(_storeId: string, _name: string, _cost: number, _price: number) {
+    // Note: menu_items table doesn't exist in current schema
+    // This function is a placeholder for future implementation
+    // For now, cost tracking is not supported
+    console.warn('updateMenuCost: menu_items table not available, cost update skipped');
+    return;
 }

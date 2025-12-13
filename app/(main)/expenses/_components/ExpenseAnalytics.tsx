@@ -30,7 +30,8 @@ export function ExpenseAnalytics({ expenses }: ExpenseAnalyticsProps) {
     // Mock Comparison (In real app, fetch last month's data)
     const lastMonthTotal = totalAmount * 1.15; // Simulate we saved 15%
     const diff = totalAmount - lastMonthTotal;
-    const percent = Math.round((diff / lastMonthTotal) * 100);
+    // NaN 방지: 0으로 나누기 방어
+    const percent = lastMonthTotal > 0 ? Math.round((diff / lastMonthTotal) * 100) : 0;
     const isSaving = diff < 0;
 
     return (
@@ -59,7 +60,7 @@ export function ExpenseAnalytics({ expenses }: ExpenseAnalyticsProps) {
                         {chartData[0]?.name || '-'}
                     </Text>
                     <Text size="xs" c="dimmed">
-                        {chartData[0] ? `${Math.round((chartData[0].value / totalAmount) * 100)}% 비중` : '내역 없음'}
+                        {chartData[0] && totalAmount > 0 ? `${Math.round((chartData[0].value / totalAmount) * 100)}% 비중` : '내역 없음'}
                     </Text>
                 </Paper>
             </SimpleGrid>
@@ -90,7 +91,7 @@ export function ExpenseAnalytics({ expenses }: ExpenseAnalyticsProps) {
                                     <Group key={item.name} gap="xs">
                                         <div style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: `var(--mantine-color-${item.color})` }} />
                                         <Text size="xs" c="dimmed" style={{ width: 60 }}>{item.name}</Text>
-                                        <Text size="xs" fw={600}>{Math.round((item.value / totalAmount) * 100)}%</Text>
+                                        <Text size="xs" fw={600}>{totalAmount > 0 ? Math.round((item.value / totalAmount) * 100) : 0}%</Text>
                                     </Group>
                                 ))}
                             </Stack>

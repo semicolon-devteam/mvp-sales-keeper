@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Card, Group, Avatar, Text, Stack, ActionIcon, Badge, Loader, Center, Image, Box, ThemeIcon, Button } from '@mantine/core';
-import { IconHeart, IconMessageCircle, IconDotsVertical, IconAlertTriangle, IconBoxSeam, IconCheck } from '@tabler/icons-react';
+import { IconHeart, IconMessageCircle, IconDotsVertical, IconAlertTriangle, IconBoxSeam, IconCheck, IconNews } from '@tabler/icons-react';
 import { useStore } from '../_contexts/store-context';
+import { EmptyState } from './EmptyState';
 import { createClient } from '@/app/_shared/utils/supabase/client';
 import { TimelineSummaryCard } from '../calendar/_components/TimelineSummaryCard';
 
@@ -122,12 +123,12 @@ export function TimelineFeed({ keyTrigger }: { keyTrigger: number }) {
                 }}
             />
             {posts.length === 0 && (
-                <Stack align="center" gap="xs" py="xl" opacity={0.6}>
-                    <Text size="xl">📭</Text>
-                    <Text c="dimmed" size="sm" ta="center">
-                        아직 소식이 없습니다.<br />첫 글을 남겨보세요!
-                    </Text>
-                </Stack>
+                <EmptyState
+                    icon={<IconNews size={32} />}
+                    title="아직 소식이 없습니다"
+                    description="첫 글을 남겨보세요!"
+                    compact
+                />
             )}
         </Stack>
     );
