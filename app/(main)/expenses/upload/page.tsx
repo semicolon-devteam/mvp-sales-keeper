@@ -252,7 +252,7 @@ export default function ExpenseUploadPage() {
                             <DatePickerInput
                                 label="날짜"
                                 value={ocrData.date}
-                                onChange={(val) => val && setOcrData({ ...ocrData, date: val })}
+                                onChange={(val) => val && setOcrData({ ...ocrData, date: typeof val === 'string' ? new Date(val) : val })}
                             />
                         </Stack>
                     </Card>
