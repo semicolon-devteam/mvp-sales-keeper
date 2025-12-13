@@ -10,23 +10,33 @@ interface ManualExpenseModalProps {
     opened: boolean;
     onClose: () => void;
     onSuccess: () => void;
+    initialData?: {
+        date?: Date;
+        merchant_name?: string;
+        amount?: number | string;
+        category?: string;
+    };
+    linkedPostId?: string;
 }
 
-export function ManualExpenseModal({ opened, onClose, onSuccess }: ManualExpenseModalProps) {
+export function ManualExpenseModal({ opened, onClose, onSuccess, initialData, linkedPostId }: ManualExpenseModalProps) {
     const [loading, setLoading] = useState(false);
 
     const form = useForm({
         initialValues: {
-            date: new Date(),
-            merchant_name: '',
-            amount: '' as number | string, // Handle as string initially for better UX or empty state
-            category: '식자재'
+            date: initialData?.date || new Date(),
+            merchant_name: initialData?.merchant_name || '',
+            amount: initialData?.amount || '' as number | string,
+            category: initialData?.category || '식자재'
         },
         validate: {
             merchant_name: (val) => val.length < 1 ? '사용처를 입력해주세요' : null,
             amount: (val) => Number(val) > 0 ? null : '금액을 입력해주세요'
         }
     });
+
+    // Reset form when opened changes or initialData changes
+    // (Optional but good for reused modal)
 
     const handleSubmit = async (values: typeof form.values) => {
         setLoading(true);
@@ -36,7 +46,15 @@ export function ManualExpenseModal({ opened, onClose, onSuccess }: ManualExpense
         formData.append('amount', String(values.amount));
         formData.append('category', values.category);
 
-        const result = await submitManualExpense(formData);
+        let result;
+        if (linkedPostId) {
+            const { submitExpenseAndProcessPost } = await import('../../timeline/actions');
+            result = await submitExpenseAndProcessPost(formData, linkedPostId);
+        } else {
+            const { submitManualExpense } = await import('../actions');
+            result = await submitManualExpense(formData);
+        }
+
         setLoading(false);
 
         if (result.success) {

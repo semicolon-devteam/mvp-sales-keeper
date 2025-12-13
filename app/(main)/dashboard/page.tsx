@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Title, Text, SimpleGrid, Group, Stack, Paper, ThemeIcon, Skeleton, ActionIcon, Box, Button, Grid, RingProgress } from '@mantine/core';
-import { IconRefresh, IconTrendingUp, IconReceipt, IconAlertCircle, IconArrowRight, IconChartPie } from '@tabler/icons-react';
+import { IconRefresh, IconTrendingUp, IconReceipt, IconAlertCircle, IconArrowRight, IconChartPie, IconCalendarStats } from '@tabler/icons-react';
 import { getDashboardData } from './actions';
 import { useRouter } from 'next/navigation';
 import { SalesTrendGraph } from '../../components/SalesTrendGraph';
@@ -12,6 +12,10 @@ import { AiCommandConsole } from './_components/AiCommandConsole';
 import { MenuStrategyWidget } from './_components/MenuStrategyWidget';
 import { WeatherWidget } from './_components/WeatherWidget';
 import { ReviewWidget } from './_components/ReviewWidget';
+import { ProfitWaterfallCard } from './_components/ProfitWaterfallCard';
+import { EfficiencyGauge } from './_components/EfficiencyGauge';
+import { FinancialBriefing } from './_components/FinancialBriefing';
+import { getFinancialSnapshot } from './financial-actions';
 
 import { useStore } from '../_contexts/store-context'; // Import useStore
 
@@ -19,6 +23,7 @@ export default function DashboardPage() {
     const router = useRouter();
     const { currentStore } = useStore(); // Get current context
     const [data, setData] = useState<any>(null);
+    const [financialData, setFinancialData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     const fetchData = async () => {
@@ -30,6 +35,9 @@ export default function DashboardPage() {
             const result = await getDashboardData(currentStore.id);
             console.log('[Dashboard] Data received:', result);
             setData(result);
+
+            const financialResult = await getFinancialSnapshot(currentStore.id);
+            setFinancialData(financialResult);
         } catch (error) {
             console.error('[Dashboard] Error fetching data:', error);
         } finally {
@@ -89,10 +97,23 @@ export default function DashboardPage() {
                 {/* Right: AI Console */}
                 <Grid.Col span={{ base: 12, md: 8 }}>
                     <Box h={500}> {/* Wrapper to enforce height */}
-                        <AiCommandConsole />
+                        <Box h={500}> {/* Wrapper to enforce height */}
+                            <AiCommandConsole initialAlerts={data.alerts} />
+                        </Box>
                     </Box>
                 </Grid.Col>
             </Grid>
+
+            {/* 1.5 FINANCIAL INTELLIGENCE (NEW) */}
+            {financialData && (
+                <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+                    <ProfitWaterfallCard data={financialData} />
+                    <Stack gap="md">
+                        <EfficiencyGauge data={financialData} />
+                        <FinancialBriefing data={financialData} />
+                    </Stack>
+                </SimpleGrid>
+            )}
 
             {/* 2. STATS GRID (Improved with Smart Badges) */}
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
@@ -187,8 +208,24 @@ export default function DashboardPage() {
             {/* 4. TREND GRAPH & STRATEGY PREVIEW (Placeholder for Phase 2.3) */}
             <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
                 <MenuStrategyWidget />
+                <Paper
+                    radius="lg"
+                    p="xl"
+                    bg="#1F2937"
+                    style={{ border: '1px solid #374151', cursor: 'pointer' }}
+                    onClick={() => router.push('/calendar')}
+                >
+                    <Stack align="center" gap="sm">
+                        <ThemeIcon size="xl" radius="md" color="teal" variant="light">
+                            <IconCalendarStats size={32} />
+                        </ThemeIcon>
+                        <Text fw={700} c="white">자금 흐름 캘린더</Text>
+                        <Text size="xs" c="dimmed" ta="center">
+                            정산 예정일과 고정지출을<br />한눈에 확인하세요.
+                        </Text>
+                    </Stack>
+                </Paper>
                 <WeatherWidget />
-                <ReviewWidget />
             </SimpleGrid>
 
             <Stack gap="sm">

@@ -1,26 +1,33 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Title, Text, Group, Paper, Stack, Indicator, Loader, ThemeIcon, Badge, Avatar, Tabs, ScrollArea, Box, Divider, Select, Center } from '@mantine/core';
+import { Title, Text, Group, Paper, Stack, Indicator, Loader, ThemeIcon, Badge, Avatar, Tabs, ScrollArea, Box, Divider, Select, Center, ActionIcon, Button } from '@mantine/core';
 import { Calendar } from '@mantine/dates';
-import { getMonthlyData, getDailyDetails } from './actions';
+import { getMonthlyData, getDailyDetails, getFixedCosts } from './actions';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ko';
-import { IconCoin, IconMessageCircle, IconBuildingStore } from '@tabler/icons-react';
+import { IconCoin, IconMessageCircle, IconBuildingStore, IconSettings } from '@tabler/icons-react';
 import { useStore } from '../_contexts/store-context';
 import { AIDailyBriefing } from './_components/AIDailyBriefing';
 import { TimelineSummaryCard } from './_components/TimelineSummaryCard';
 import { TimelineItem } from './_components/TimelineItem';
+import { FixedCostModal } from './_components/FixedCostModal';
 
 export default function CalendarPage() {
     const { currentStore, myStores } = useStore();
 
-    // UI State: 'all' or specific store ID
+    // UI State
     const [viewScope, setViewScope] = useState<string>('all');
+    const [viewMode, setViewMode] = useState<'sales' | 'cashflow'>('sales');
 
     const [date, setDate] = useState<Date | null>(new Date());
     const [month, setMonth] = useState<Date>(new Date());
     const [data, setData] = useState<Record<string, { sales: number; expense: number }>>({});
+
+    // Fixed Costs State
+    const [fixedCosts, setFixedCosts] = useState<any[]>([]);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [fixedCostRefreshKey, setFixedCostRefreshKey] = useState(0);
 
     // Detailed Data
     const [details, setDetails] = useState<{ sales: any[], expenses: any[], posts: any[] }>({ sales: [], expenses: [], posts: [] });
@@ -33,10 +40,34 @@ export default function CalendarPage() {
         }
     }, [currentStore?.id]);
 
-    const fetchData = async (targetMonth: Date, scope: string) => {
+
+
+    // Refresh fixed costs when scope changes or modal updates
+    useEffect(() => {
+        let isActive = true;
+
+        const fetch = async () => {
+            try {
+                const costs = await getFixedCosts(viewScope);
+                if (isActive) {
+                    setFixedCosts(costs);
+                }
+            } catch (e: any) {
+                console.error(e);
+            }
+        };
+
+        fetch();
+
+        return () => {
+            isActive = false;
+        };
+    }, [viewScope, fixedCostRefreshKey]);
+
+    const fetchData = async (targetMonth: Date, scope: string, mode: 'sales' | 'cashflow') => {
         setLoading(true);
         try {
-            const result = await getMonthlyData(targetMonth, scope);
+            const result = await getMonthlyData(targetMonth, scope, mode);
             setData(result);
         } catch (error) {
             console.error(error);
@@ -59,8 +90,8 @@ export default function CalendarPage() {
     };
 
     useEffect(() => {
-        fetchData(month, viewScope);
-    }, [month, viewScope]);
+        fetchData(month, viewScope, viewMode);
+    }, [month, viewScope, viewMode]);
 
     useEffect(() => {
         if (date) {
@@ -91,10 +122,14 @@ export default function CalendarPage() {
         return { bg: 'rgba(255, 255, 255, 0.05)', c: 'gray.5', border: '1px solid rgba(255, 255, 255, 0.1)' }; // Break-even
     };
 
-    const renderDay = (dayDate: Date) => {
-        const status = getDayStatus(dayDate);
+    const renderDay = (dayDate: any) => {
+        const dayNum = dayjs(dayDate).date();
         const dateStr = dayjs(dayDate).format('YYYY-MM-DD');
+        const status = getDayStatus(dayDate);
         const dayData = data[dateStr];
+
+        // Check if there is a fixed cost today
+        const hasFixedCost = fixedCosts.some(fc => Number(fc.day_of_month) === dayNum);
 
         return (
             <div
@@ -111,7 +146,23 @@ export default function CalendarPage() {
                     position: 'relative'
                 }}
             >
-                <Text size="sm" c={status?.c || 'gray.4'}>{dayjs(dayDate).date()}</Text>
+                <Text size="sm" c={status?.c || 'gray.4'}>{dayNum}</Text>
+
+                {/* Fixed Cost Indicator */}
+                {hasFixedCost && (
+                    <Box
+                        style={{
+                            position: 'absolute',
+                            top: 6,
+                            right: 6,
+                            width: 6,
+                            height: 6,
+                            borderRadius: '50%',
+                            backgroundColor: '#EF4444',
+                            zIndex: 10
+                        }}
+                    />
+                )}
 
                 {/* Desktop: Show Amount */}
                 <Box visibleFrom="xs" style={{ fontSize: '10px', color: status?.c }}>
@@ -123,6 +174,9 @@ export default function CalendarPage() {
     };
 
     const selectedData = date ? data[dayjs(date).format('YYYY-MM-DD')] : null;
+
+    // Filter today's fixed costs
+    const todaysFixedCosts = date ? fixedCosts.filter(fc => fc.day_of_month === dayjs(date).date()) : [];
 
     // Monthly Totals Calculation
     const monthlyTotalSales = Object.values(data).reduce((acc, curr) => acc + curr.sales, 0);
@@ -157,9 +211,51 @@ export default function CalendarPage() {
                         allowDeselect={false}
                         leftSection={<IconBuildingStore size={22} color="white" />}
                     />
-                    <Text size="sm" c="dimmed" fw={600}>
-                        {dayjs(month).format('YYYY년 M월')}
-                    </Text>
+                    <Group gap="xs">
+                        <Button
+                            variant="default"
+                            size="xs"
+                            leftSection={<IconSettings size={14} />}
+                            onClick={() => setModalOpen(true)}
+                            styles={{ root: { backgroundColor: '#1F2937', color: '#9CA3AF', borderColor: '#374151' } }}
+                        >
+                            고정지출 설정
+                        </Button>
+                        <Text size="sm" c="dimmed" fw={600}>
+                            {dayjs(month).format('YYYY년 M월')}
+                        </Text>
+                    </Group>
+                </Group>
+
+                <Group grow>
+                    <Box
+                        onClick={() => setViewMode('sales')}
+                        style={{
+                            padding: '8px',
+                            borderRadius: '8px',
+                            backgroundColor: viewMode === 'sales' ? '#374151' : 'transparent',
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            border: viewMode === 'sales' ? '1px solid #60A5FA' : '1px solid transparent',
+                            color: viewMode === 'sales' ? 'white' : 'gray'
+                        }}
+                    >
+                        <Text size="sm" fw={700}>📊 매출 기준</Text>
+                    </Box>
+                    <Box
+                        onClick={() => setViewMode('cashflow')}
+                        style={{
+                            padding: '8px',
+                            borderRadius: '8px',
+                            backgroundColor: viewMode === 'cashflow' ? '#374151' : 'transparent',
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            border: viewMode === 'cashflow' ? '1px solid #34D399' : '1px solid transparent',
+                            color: viewMode === 'cashflow' ? '#34D399' : 'gray'
+                        }}
+                    >
+                        <Text size="sm" fw={700}>💸 실입금 기준</Text>
+                    </Box>
                 </Group>
 
                 {/* Monthly Summary Card */}
@@ -190,6 +286,7 @@ export default function CalendarPage() {
             {/* Calendar Card */}
             <Paper radius="xl" p="xs" shadow="sm" bg="#1F2937" style={{ border: '1px solid #374151' }}>
                 <Calendar
+                    key={fixedCosts.map(c => c.id).join('-')} // Force re-render when costs change
                     static
                     value={date}
                     onChange={setDate}
@@ -226,6 +323,24 @@ export default function CalendarPage() {
                             sales={selectedData.sales}
                             expense={selectedData.expense}
                         />
+                    )}
+
+                    {/* Fixed Cost Warning Section */}
+                    {todaysFixedCosts.length > 0 && (
+                        <Paper radius="lg" p="md" bg="rgba(239, 68, 68, 0.1)" style={{ border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                            <Group gap="sm" mb="xs">
+                                <Box w={8} h={8} style={{ borderRadius: '50%', backgroundColor: '#EF4444' }} />
+                                <Text fw={700} c="red.4" size="sm">오늘의 고정지출 (예상)</Text>
+                            </Group>
+                            <Stack gap="xs">
+                                {todaysFixedCosts.map(fc => (
+                                    <Group key={fc.id} justify="space-between">
+                                        <Text size="sm" c="white">{fc.name}</Text>
+                                        <Text size="sm" fw={700} c="red.3">{fc.amount.toLocaleString()}원</Text>
+                                    </Group>
+                                ))}
+                            </Stack>
+                        </Paper>
                     )}
 
                     {/* Tabs for Details vs Timeline */}
@@ -305,6 +420,14 @@ export default function CalendarPage() {
                     </Tabs>
                 </Stack>
             )}
+
+            <FixedCostModal
+                opened={modalOpen}
+                onClose={() => setModalOpen(false)}
+                storeId={viewScope}
+                existingCosts={fixedCosts}
+                onUpdate={() => setFixedCostRefreshKey(k => k + 1)}
+            />
         </Stack>
     );
 }

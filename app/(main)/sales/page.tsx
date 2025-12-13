@@ -7,10 +7,12 @@ import { DatePickerInput } from '@mantine/dates';
 import { IconCalendarStats, IconFileTypePdf, IconBuildingStore, IconCheck, IconX, IconTrendingUp, IconTrendingDown, IconTargetArrow, IconBike, IconHome, IconSettings, IconEdit } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import CountUp from 'react-countup';
-import { submitSale, getSales } from './actions';
+import { submitSale, getSales, getRecentSalesActivity } from './actions';
 import { Sale } from './_repositories/sales-repository';
 import PCShareButton from './_components/PCShareButton';
-import { CalculatorInput } from './_components/CalculatorInput';
+// import { CalculatorInput } from './_components/CalculatorInput'; // Replaced by SmartSalesInput
+import { SmartSalesInput } from './_components/SmartSalesInput';
+import { DataUploadModal } from './_components/DataUploadModal';
 import { useStore } from '../_contexts/store-context';
 import '@mantine/dates/styles.css';
 
@@ -26,6 +28,8 @@ export default function SalesPage() {
     const [dailyTotal, setDailyTotal] = useState<number>(0);
     const [platform, setPlatform] = useState<string>('hall'); // Default to Hall
     const [loading, setLoading] = useState(false);
+    const [uploadModalOpen, setUploadModalOpen] = useState(false);
+    const [refreshKey, setRefreshKey] = useState(0);
 
     useEffect(() => {
         // Initialize date on mount to avoid hydration mismatch, but ensure it sets
@@ -224,12 +228,27 @@ export default function SalesPage() {
                     radius="md"
                     size="md"
                     color="gray"
-                    onClick={() => window.location.href = '/sales/upload'}
+                    onClick={() => setUploadModalOpen(true)}
                     leftSection={<IconFileTypePdf size={18} />}
                 >
-                    엑셀 업로드
+                    자료 업로드
                 </Button>
             </Group>
+
+            <DataUploadModal
+                opened={uploadModalOpen}
+                onClose={() => setUploadModalOpen(false)}
+                onSuccess={() => {
+                    fetchSales();
+                    // Also refresh recent activity log if possible, but fetchSales updates salesList. 
+                    // RecentActivityLog has its own useEffect. we trigger a re-mount or expose a refetch? 
+                    // Actually SalesPage passes 'fetchSales' to RecentActivityLog?? No, RecentActivityLog fetches itself.
+                    // We can listen to a global event or validaton, but simple way:
+                    // Force refresh of RecentActivityLog by incrementing a key or passing a signal.
+                    // Let's increment 'inputKey' or similar. 
+                    setRefreshKey(prev => prev + 1);
+                }}
+            />
 
             {/* Hero Card: Daily Total (Dark Theme) + Intelligence */}
             <Paper
@@ -374,9 +393,13 @@ export default function SalesPage() {
 
             {/* Calculator Input */}
             {/* Disable if 'all' is selected? or just warn on submit? Warn is better UX than disabled keys maybe. */}
-            <CalculatorInput
+            {/* Smart Calculator Input */}
+            {/* Smart Calculator Input */}
+            <SmartSalesInput
                 key={inputKey} // Force reset on new key
-                value={Number(amount)}
+                storeId={viewScope === 'all' ? undefined : viewScope}
+                date={date || new Date()}
+                value={amount}
                 onChange={(val) => setAmount(val.toString())}
                 onSubmit={(val) => handleSubmit(val.toString())}
             />
@@ -425,6 +448,47 @@ export default function SalesPage() {
                     ))
                 )}
             </Stack>
+
+            {/* Global Recent Activity Log (Cross-Date Check) */}
+            <Stack gap="sm" mt="xl" pt="xl" style={{ borderTop: '1px solid #374151' }}>
+                <Group justify="space-between">
+                    <Text size="sm" c="dimmed" fw={700} px="xs">전체 최근 활동 (날짜 무관)</Text>
+                    <ActionIcon variant="subtle" color="gray" onClick={() => fetchSales()}>
+                        <IconSettings size={16} />
+                    </ActionIcon>
+                </Group>
+                <RecentActivityLog storeId={viewScope} key={refreshKey} />
+            </Stack>
         </Stack >
+    );
+}
+
+function RecentActivityLog({ storeId }: { storeId: string }) {
+    const [logs, setLogs] = useState<Sale[]>([]);
+
+    useEffect(() => {
+        getRecentSalesActivity(storeId).then(setLogs);
+    }, [storeId]);
+
+    if (logs.length === 0) return <Text size="xs" c="dimmed" px="md">최근 활동 내역이 없습니다.</Text>;
+
+    return (
+        <Stack gap="xs">
+            {logs.map(log => (
+                <Paper key={log.id} radius="md" p="sm" bg="#1A1B1E" withBorder style={{ borderColor: '#2C2E33' }}>
+                    <Group justify="space-between">
+                        <Group gap="xs">
+                            <Badge variant="dot" color={log.type === 'excel' ? 'green' : (log.type === 'manual' ? 'gray' : 'blue')}>
+                                {log.date}
+                            </Badge>
+                            <Text size="sm" c="gray.3" fw={600}>{log.amount.toLocaleString()}원</Text>
+                        </Group>
+                        <Text size="xs" c="dimmed">
+                            {new Date(log.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 저장됨
+                        </Text>
+                    </Group>
+                </Paper>
+            ))}
+        </Stack>
     );
 }

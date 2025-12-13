@@ -54,13 +54,9 @@ export function TimelineHeader() {
                             },
                             option: {
                                 color: 'white',
-                                '&:hover': {
-                                    backgroundColor: '#374151',
-                                },
-                                '&[data-checked]': {
-                                    backgroundColor: '#2563eb',
-                                    color: 'white',
-                                },
+                                color: 'white',
+                                // '&:hover': { backgroundColor: '#374151' },
+                                // '&[data-checked]': { backgroundColor: '#2563eb', color: 'white' }
                             }
                         }}
                         rightSection={<IconChevronDown color="white" />}

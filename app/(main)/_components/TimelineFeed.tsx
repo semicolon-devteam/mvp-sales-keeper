@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, Group, Avatar, Text, Stack, ActionIcon, Badge, Loader, Center, Image, Box, ThemeIcon } from '@mantine/core';
+import { Card, Group, Avatar, Text, Stack, ActionIcon, Badge, Loader, Center, Image, Box, ThemeIcon, Button } from '@mantine/core';
 import { IconHeart, IconMessageCircle, IconDotsVertical, IconAlertTriangle, IconBoxSeam, IconCheck } from '@tabler/icons-react';
 import { useStore } from '../_contexts/store-context';
 import { createClient } from '@/app/_shared/utils/supabase/client';
 import { TimelineSummaryCard } from '../calendar/_components/TimelineSummaryCard';
+
+import { ManualExpenseModal } from '../expenses/_components/ManualExpenseModal';
 
 type Post = {
     id: string;
@@ -14,6 +16,7 @@ type Post = {
     post_type: string;
     created_at: string;
     author_id: string;
+    status?: string; // Add status type
 };
 
 export function TimelineFeed({ keyTrigger }: { keyTrigger: number }) {
@@ -21,6 +24,45 @@ export function TimelineFeed({ keyTrigger }: { keyTrigger: number }) {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const supabase = createClient();
+
+    // Interaction State
+    const [expenseModalOpen, setExpenseModalOpen] = useState(false);
+    const [activePost, setActivePost] = useState<Post | null>(null);
+    const [ocrLoading, setOcrLoading] = useState<string | null>(null); // Post ID being processed
+    const [ocrResult, setOcrResult] = useState<any>(null);
+
+    const handleProcessReceipt = async (post: Post) => {
+        setActivePost(post);
+        setOcrLoading(post.id);
+
+        let initial = {
+            date: new Date(post.created_at),
+            merchant_name: '',
+            amount: '' as any,
+            category: '기타'
+        };
+
+        if (post.image_url) {
+            try {
+                const { parseAndSuggestExpense } = await import('../timeline/actions');
+                const result = await parseAndSuggestExpense(post.image_url);
+                if (result.success && result.data) {
+                    initial = {
+                        date: new Date(result.data.date),
+                        merchant_name: result.data.merchant_name,
+                        amount: result.data.amount,
+                        category: result.data.category
+                    };
+                }
+            } catch (e) {
+                console.error("OCR Error", e);
+            }
+        }
+
+        setOcrResult(initial);
+        setOcrLoading(null);
+        setExpenseModalOpen(true);
+    };
 
     const fetchPosts = async () => {
         if (!currentStore) return;
@@ -63,8 +105,22 @@ export function TimelineFeed({ keyTrigger }: { keyTrigger: number }) {
             <TimelineSummaryCard date={new Date()} posts={todaysPosts} />
 
             {posts.map((post) => (
-                <PostCard key={post.id} post={post} />
+                <PostCard key={post.id} post={post} onProcess={handleProcessReceipt} />
             ))}
+
+            <ManualExpenseModal
+                opened={expenseModalOpen}
+                onClose={() => setExpenseModalOpen(false)}
+                onSuccess={() => {
+                    fetchPosts(); // Refresh to update status
+                }}
+                linkedPostId={activePost?.id}
+                initialData={{
+                    date: activePost ? new Date(activePost.created_at) : new Date(),
+                    merchant_name: '', // Could try even simpler extraction later
+                    category: '기타'
+                }}
+            />
             {posts.length === 0 && (
                 <Stack align="center" gap="xs" py="xl" opacity={0.6}>
                     <Text size="xl">📭</Text>
@@ -77,7 +133,7 @@ export function TimelineFeed({ keyTrigger }: { keyTrigger: number }) {
     );
 }
 
-function PostCard({ post }: { post: Post }) {
+function PostCard({ post, onProcess, loading }: { post: Post, onProcess?: (post: Post) => void, loading?: boolean }) {
     // Mock for nicer UI
     const isNotice = post.post_type === 'notice';
     const dateStr = new Date(post.created_at).toLocaleString('ko-KR', {
@@ -142,6 +198,28 @@ function PostCard({ post }: { post: Post }) {
             >
                 {post.content}
             </Text>
+
+            {/* AI Action Area: Receipt Detection */}
+            {post.status !== 'done' && (post.image_url || post.content.includes('#영수증') || post.content.includes('영수증')) && (
+                <Button
+                    variant="light"
+                    color="lime"
+                    fullWidth
+                    size="sm"
+                    mb="sm"
+                    leftSection={<IconAlertTriangle size={16} />} // Using Alert/Check icon 
+                    onClick={() => onProcess?.(post)}
+                    style={{ border: '1px solid #82c91e', color: '#82c91e', backgroundColor: 'rgba(130, 201, 30, 0.1)' }}
+                >
+                    🧾 지출 장부에 등록하기
+                </Button>
+            )}
+
+            {post.status === 'done' && (
+                <Badge color="teal" variant="light" fullWidth size="lg" mb="sm" leftSection={<IconCheck size={14} />}>
+                    ✅ 장부 반영됨
+                </Badge>
+            )}
 
             {/* Image */}
             {post.image_url && (

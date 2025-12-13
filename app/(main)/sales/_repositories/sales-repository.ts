@@ -1,38 +1,116 @@
-import { createClient } from '@/app/_shared/utils/supabase/server';
+import { createClient } from "@/app/_shared/utils/supabase/server";
 
-export type Sale = {
+export interface Sale {
     id: string;
     user_id: string;
     amount: number;
-    date: string; // YYYY-MM-DD
-    type: 'manual' | 'excel' | 'hall' | 'baemin' | 'yogiyo' | 'coupang';
+    date: string;
+    type: 'hall' | 'baemin' | 'yogiyo' | 'coupang' | 'manual' | 'excel';
     store_id?: string;
     created_at: string;
-};
+}
+
+export async function addSale(sale: any) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Unauthorized');
+
+    await supabase.from('mvp_sales').insert({
+        ...sale,
+        user_id: user.id
+    });
+}
 
 export async function getDailySales(date: string, storeId?: string) {
     const supabase = await createClient();
-    let query = supabase
-        .from('mvp_sales')
-        .select('*')
-        .eq('date', date);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Unauthorized');
 
-    if (storeId && storeId !== 'all') {
+    let query = supabase.from('mvp_sales').select('*').eq('user_id', user.id).eq('date', date);
+    if (storeId && storeId !== 'ALL') {
         query = query.eq('store_id', storeId);
     }
 
-    const { data, error } = await query;
-    if (error) throw error;
-    return data as Sale[];
+
+    const { data } = await query;
+    return data || [];
 }
 
-export async function addSale(sale: Omit<Sale, 'id' | 'user_id' | 'created_at'>) {
+export async function getMonthlySales(year: number, month: number, storeId?: string) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-
     if (!user) throw new Error('Unauthorized');
 
-    const { data, error } = await supabase
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    // Calculate end date (next month's 1st day)
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear = month === 12 ? year + 1 : year;
+    const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+
+    let query = supabase.from('mvp_sales')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('date', startDate)
+        .lt('date', endDate);
+
+    if (storeId && storeId !== 'ALL') {
+        query = query.eq('store_id', storeId);
+    }
+
+    const { data } = await query;
+    return data || [];
+}
+
+export async function getSalesByDateRange(startDate: string, endDate: string, storeId?: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Unauthorized');
+
+    let query = supabase.from('mvp_sales')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('date', startDate)
+        .lte('date', endDate);
+
+    if (storeId && storeId !== 'ALL') {
+        query = query.eq('store_id', storeId);
+    }
+
+    const { data } = await query;
+    return data || [];
+}
+
+export async function getRecentActivity(storeId?: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    let query = supabase.from('mvp_sales')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+    if (storeId && storeId !== 'ALL') {
+        query = query.eq('store_id', storeId);
+    }
+
+    const { data } = await query;
+    return data || [];
+}
+
+export async function deleteSale(id: string) {
+    const supabase = await createClient();
+    await supabase.from('mvp_sales').delete().eq('id', id);
+}
+
+export async function addSaleWithItems(sale: any, items: any[]) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Unauthorized');
+
+    // 1. Insert Sales Record
+    const { data: saleData, error: saleError } = await supabase
         .from('mvp_sales')
         .insert({
             ...sale,
@@ -41,56 +119,47 @@ export async function addSale(sale: Omit<Sale, 'id' | 'user_id' | 'created_at'>)
         .select()
         .single();
 
-    if (error) throw error;
-    return data;
-}
+    if (saleError) throw saleError;
 
-export async function getMonthlySales(year: number, month: number, storeId?: string) {
-    const supabase = await createClient();
-    const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
-    const endDate = `${year}-${month.toString().padStart(2, '0')}-31`; // Approx
+    // 2. Insert Items
+    if (items.length > 0) {
+        const { error: itemsError } = await supabase
+            .from('sale_items')
+            .insert(items.map(item => ({
+                ...item,
+                sale_id: saleData.id
+            })));
 
-    let query = supabase
-        .from('mvp_sales')
-        .select('*')
-        .gte('date', startDate)
-        .lte('date', endDate);
-
-    if (storeId && storeId !== 'all') {
-        query = query.eq('store_id', storeId);
+        if (itemsError) throw itemsError;
     }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-    return data as Sale[];
 }
 
-export async function deleteSale(id: string) {
+export async function getRecentItems() {
     const supabase = await createClient();
-    const { error } = await supabase
-        .from('mvp_sales')
-        .delete()
-        .eq('id', id);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
 
-    if (error) throw error;
-}
+    // Distinct selection for Autocomplete
+    // Note: Supabase doesn't support distinct on select easily without RPC or tricky query.
+    // For MVP, we fetch last 200 items and deduce unique locally.
+    const { data } = await supabase
+        .from('sale_items')
+        .select(`
+            name, unit_price,
+            mvp_sales!inner ( user_id )
+        `)
+        .eq('mvp_sales.user_id', user.id)
+        .order('id', { ascending: false })
+        .limit(200);
 
-export async function getSalesRange(startDate: string, endDate: string, storeId?: string) {
-    const supabase = await createClient();
+    if (!data) return [];
 
-    let query = supabase
-        .from('mvp_sales')
-        .select('*')
-        .gte('date', startDate)
-        .lte('date', endDate)
-        .order('date', { ascending: true });
+    const map = new Map<string, number>();
+    data.forEach((d: any) => {
+        if (!map.has(d.name)) {
+            map.set(d.name, d.unit_price);
+        }
+    });
 
-    if (storeId && storeId !== 'all') {
-        query = query.eq('store_id', storeId);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-    return data as Sale[];
+    return Array.from(map.entries()).map(([name, price]) => ({ name, price }));
 }

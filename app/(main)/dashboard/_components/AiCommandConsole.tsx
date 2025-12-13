@@ -17,10 +17,22 @@ type ActionChip = {
     action: () => void;
 };
 
-export function AiCommandConsole() {
+interface AiCommandConsoleProps {
+    initialAlerts?: { message: string, type: string }[];
+}
+
+export function AiCommandConsole({ initialAlerts = [] }: AiCommandConsoleProps) {
     const [messages, setMessages] = useState<AiMessage[]>([
-        { id: 'init', role: 'ai', text: '사장님, 좋은 아침입니다. ☀️\n오늘 매장 건강 점수는 **87점**입니다. 전반적으로 훌륭하지만, 식자재 비용이 약간 높네요.' }
+        { id: 'init', role: 'ai', text: '사장님, 좋은 아침입니다. ☀️\n오늘 매장 건강 점수는 **87점**입니다.' }
     ]);
+
+    useEffect(() => {
+        if (initialAlerts.length > 0) {
+            const alertText = initialAlerts.map(a => `🔔 [알림] ${a.message}`).join('\n');
+            const newMsg: AiMessage = { id: 'alert', role: 'ai', text: `확인해야 할 사항이 있습니다:\n${alertText}` };
+            setMessages(prev => [...prev, newMsg]);
+        }
+    }, [initialAlerts]);
     const [typingText, setTypingText] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const viewport = useRef<HTMLDivElement>(null); // Ref for scrolling
