@@ -99,10 +99,6 @@ export default function CalendarPage() {
         }
     }, [date, viewScope]);
 
-    const handleMonthChange = (newMonth: Date) => {
-        setMonth(newMonth);
-    };
-
     const getDayProps = (day: Date) => ({
         selected: date ? dayjs(day).isSame(date, 'date') : false,
         onClick: () => setDate(day),
@@ -289,7 +285,8 @@ export default function CalendarPage() {
                     key={fixedCosts.map(c => c.id).join('-')} // Force re-render when costs change
                     static
                     date={month}
-                    onDateChange={handleMonthChange}
+                    onPreviousMonth={() => setMonth(dayjs(month).subtract(1, 'month').toDate())}
+                    onNextMonth={() => setMonth(dayjs(month).add(1, 'month').toDate())}
                     getDayProps={getDayProps}
                     renderDay={renderDay}
                     styles={{
