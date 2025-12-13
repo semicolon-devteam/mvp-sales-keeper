@@ -1,79 +1,77 @@
-# 매출지킴이 (Sales Keeper)
+# 🦅 매출지킴이 (Sales Keeper)
+> **"사장님의 든든한 AI 금융 파트너"**  
+> 복잡한 숫자는 AI에게 맡기고, 사장님은 '장사'와 '손님'에만 집중하세요.
 
-> 자영업자의 실제 순이익을 지키는 스마트 솔루션
+![Dashboard Preview](/public/dashboard-preview.png)
 
-포스·배달앱·프랜차이즈 API와 AI OCR 기술로 매출과 지출을 자동 집계하고, 누락 없는 손익 관리를 실현합니다.
+## 📖 프로젝트 소개
+**매출지킴이**는 요식업 사장님들을 위한 **All-in-One 매장 관리 플랫폼**입니다.  
+단순한 장부 정리를 넘어, **AI가 데이터를 분석하고 행동 전략을 제안**합니다.  
+매출, 지출, 인건비, 메뉴 효율성까지 한 눈에 파악하고, **Claude AI**가 탑재된 비서와 대화하며 매장 운영의 정답을 찾아가세요.
 
-## 플랫폼 전략
+---
 
-> **"오늘 추정은 모바일로, 정확한 정산은 PC로"**
+## ✨ 핵심 기능 (Key Features)
 
-| 플랫폼 | 역할 | 주요 기능 |
-|--------|------|----------|
-| 📱 **Mobile (PWA)** | 일일 간편 입력 | 오늘 매출 숫자 입력, 영수증 OCR, 3초 브리핑 |
-| 💻 **PC (Web)** | 정확한 정산 | 엑셀 드래그앤드롭, 정산서 파싱, 월말 리포트 |
+### 🤖 1. AI Command Center (AI 커맨드 센터)
+- **"오늘 매출 어때?"**, **"재료비가 왜 이렇게 많이 나왔어?"**라고 물어보면 AI가 답변합니다.
+- 내 매장의 실제 데이터(매출, 순수익, 최근 추세)를 기반으로 **Claude AI**가 맥락 있는 조언을 제공합니다.
+- 단순 챗봇이 아닌, 매장 상황을 꿰뚫고 있는 **유능한 점장님**을 고용하는 효과를 누리세요.
 
-## 핵심 기능
+### 📊 2. 프리미엄 대시보드 (The Cockpit)
+- **매장 건강도(Store Health)**: 매출, 리뷰, 지출 효율성을 종합하여 100점 만점의 점수로 보여줍니다.
+- **수익 폭포(Profit Waterfall)**: 매출에서 재료비, 인건비가 빠져나가고 최종 순수익이 남는 과정을 직관적으로 시각화합니다.
+- **주간 브리핑**: "이번 주는 지난주보다 15% 성장했습니다!" 중요한 변화를 AI가 요약해 드립니다.
 
-| 기능 | 설명 |
-|------|------|
-| 📷 지출 인식 | 영수증 카메라 촬영 → AI OCR로 자동 분류 |
-| 📁 매출 관리 | 모바일: 숫자 간편 입력 / PC: 엑셀 업로드 |
-| 📊 순이익 브리핑 | 오늘 벌고 쓴 금액, 전일 대비 %, 누락 지출 경고 |
-| 🧠 누락 알림 | 지출 패턴 학습 → 카카오 알림톡 발송 |
-| 📋 다점포 요약 | 여러 매장 손익 집계 + 개별 매장 drill-down |
-| 📎 월말 리포트 | 매출/지출/영수증 포함 PDF 자동 생성 |
+### 🥩 3. 메뉴 전략가 (Profit Architect)
+- **BCG 매트릭스 분석**: 내 메뉴를 **스타(효자), 캐시카우, 골칫덩이**로 자동 분류합니다.
+- **가격 시뮬레이터**: "가격 500원 올리면 이익이 얼마나 변할까?" 미리 실험해보고 결정하세요.
+- 원가 입력만 하면 마진율과 이익 기여도를 자동으로 계산해줍니다.
 
-## 기술 스택
+### 🧾 4. 스마트 입출금 관리
+- **영수증 OCR**: 종이 영수증을 찍기만 하세요. 상호명, 금액, 날짜를 자동으로 인식해 장부에 기록합니다.
+- **엑셀 대량 등록**: 배민, 쿠팡이츠, 요기요 엑셀 파일을 그대로 업로드하면 플랫폼별 수수료까지 계산해 정리해줍니다.
+- **자금 흐름 캘린더**: 월세, 급여일, 정산 예정일을 달력에서 한눈에 확인하고 미리 대비하세요.
 
-| Layer | Technology |
-|-------|------------|
-| **Web (PWA)** | Next.js 14 + TypeScript |
-| **Styling** | Tailwind CSS |
-| **Backend** | Node.js (Express) + FastAPI |
-| **OCR Engine** | Google Vision + Naver Clova |
-| **Database** | PostgreSQL (정형) + MongoDB (비정형) |
-| **Auth** | JWT + Cookie (세션 영구 유지) |
-| **Notification** | 카카오 알림톡 (BizMessage) |
+### 👥 5. 인텔리전스 스태프 관리
+- 복잡한 아르바이트 스케줄링부터 급여 예상액 계산까지 자동으로 처리합니다.
+- 인건비율(RPH)을 분석하여 최적의 인력 배치를 돕습니다.
 
-## PWA 특징
+---
 
-- ✅ 홈 화면 추가 (A2HS) - 앱처럼 설치
-- ✅ 오프라인 캐싱 (Service Worker)
-- ✅ 세션 영구 유지 (매번 로그인 불필요)
-- ✅ Safe Area 대응 (아이폰 노치/하단 바)
-- ✅ 터치 최적화 (버튼 높이 44px+)
+## 🛠 기술 스택 (Tech Stack)
+- **Core**: Next.js 15 (App Router), TypeScript
+- **Design System**: Mantine UI, Tailwind CSS, Recharts (Data Viz)
+- **Backend & DB**: Supabase (PostgreSQL, Auth, Storage)
+- **AI & Logic**: Anthropic Claude API, Tesseract.js (Client-side OCR)
 
-## 프로젝트 구조
+## 🚀 시작하기 (Getting Started)
+1. **Repository Clone**
+   ```bash
+   git clone https://github.com/semicolon-devteam/mvp-sales-keeper.git
+   ```
+2. **Install Dependencies**
+   ```bash
+   npm install
+   ```
+3. **Environment Setup** (`.env.local`)
+   ```bash
+   NEXT_PUBLIC_SUPABASE_URL=...
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+   ANTHROPIC_API_KEY=...
+   ```
+4. **Run Server**
+   ```bash
+   npm run dev
+   ```
 
-```
-MVP-sales-keeper/
-├── apps/
-│   ├── web/             # Next.js PWA (모바일+PC 통합)
-│   └── backend/         # Node.js + FastAPI
-├── packages/
-│   └── shared/          # 공통 타입, 유틸
-├── docs/                # 문서
-├── package.json
-└── turbo.json
-```
+---
 
-## 시작하기
+## 💎 Design Philosophy
+> **"압도적인 가독성과 프로페셔널한 미학"**
+*   **Emerald & Glass**: 신뢰감을 주는 딥 그린과 현대적인 글래스모피즘 디자인.
+*   **Information Density**: 필요한 정보는 확실하게, 불필요한 장식은 과감하게 제거.
+*   **Dynamic Interaction**: 살아있는 듯한 반응형 차트와 부드러운 애니메이션.
 
-```bash
-# 의존성 설치
-pnpm install
-
-# 개발 서버 실행
-pnpm dev
-```
-
-## 사용자 시나리오
-
-1. **퇴근 (Mobile PWA)**: 앱 켜서 "오늘 포스기 매출 50만 원" 입력 → "예상 이익 15만 원" 확인
-2. **주말 (PC)**: 집 PC에서 배민/요기요 엑셀 다운로드 → 드래그 한 번으로 정확한 정산
-3. **알림**: 카카오톡으로 "이번 주 정확한 순이익 보고서가 생성되었습니다" 수신
-
-## 라이선스
-
-© 2025 Semicolon. All Rights Reserved.
+---
+**Sales Keeper Team** | 2025 Semicolon MVP Project
