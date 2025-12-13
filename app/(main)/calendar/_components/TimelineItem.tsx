@@ -1,4 +1,5 @@
 import { Paper, Group, Stack, Text, ThemeIcon, Badge, Box } from '@mantine/core';
+import Image from 'next/image';
 import { IconMessageCircle, IconAlertTriangle, IconBoxSeam, IconCheck, IconInfoCircle } from '@tabler/icons-react';
 
 interface TimelineItemProps {
@@ -38,8 +39,8 @@ export function TimelineItem({ post }: TimelineItemProps) {
                     <Text size="sm" c="gray.3" style={{ whiteSpace: 'pre-wrap' }}>{post.content}</Text>
 
                     {post.image_url && (
-                        <Box mt="xs" style={{ borderRadius: 8, overflow: 'hidden' }}>
-                            <img src={post.image_url} alt="attached" style={{ width: '100%', objectFit: 'cover' }} />
+                        <Box mt="xs" style={{ borderRadius: 8, overflow: 'hidden', position: 'relative', width: '100%', height: 200 }}>
+                            <Image src={post.image_url} alt="attached" fill style={{ objectFit: 'cover' }} />
                         </Box>
                     )}
                 </Stack>

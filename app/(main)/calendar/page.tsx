@@ -38,7 +38,7 @@ export default function CalendarPage() {
         if (currentStore) {
             setViewScope(currentStore.id);
         }
-    }, [currentStore?.id]);
+    }, [currentStore]);
 
 
 
