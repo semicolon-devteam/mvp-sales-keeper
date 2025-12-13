@@ -1,6 +1,6 @@
 'use client';
 
-import { Paper, Text, Stack, Group, ThemeIcon, Button, ScrollArea, Avatar, Box } from '@mantine/core';
+import { Paper, Text, Stack, Group, ThemeIcon, Button, ScrollArea, Avatar, Box, TextInput, ActionIcon } from '@mantine/core';
 import { IconRobot, IconSparkles, IconSend } from '@tabler/icons-react';
 import { useState, useEffect, useRef } from 'react';
 import { useTypewriter } from '@/app/_shared/hooks/useTypewriter';
@@ -19,11 +19,14 @@ type ActionChip = {
 
 interface AiCommandConsoleProps {
     initialAlerts?: { message: string, type: string }[];
+    contextData?: any; // Received from parent (Server Component)
 }
 
-export function AiCommandConsole({ initialAlerts = [] }: AiCommandConsoleProps) {
+import { askAiAssistant } from '../ai-actions';
+
+export function AiCommandConsole({ initialAlerts = [], contextData = {} }: AiCommandConsoleProps) {
     const [messages, setMessages] = useState<AiMessage[]>([
-        { id: 'init', role: 'ai', text: '사장님, 좋은 아침입니다. ☀️\n오늘 매장 건강 점수는 **87점**입니다.' }
+        { id: 'init', role: 'ai', text: '사장님, 좋은 아침입니다. ☀️\n오늘 매장 상태를 분석할 준비가 되었습니다.' }
     ]);
 
     useEffect(() => {
@@ -33,24 +36,26 @@ export function AiCommandConsole({ initialAlerts = [] }: AiCommandConsoleProps) 
             setMessages(prev => [...prev, newMsg]);
         }
     }, [initialAlerts]);
+
     const [typingText, setTypingText] = useState('');
     const [isTyping, setIsTyping] = useState(false);
-    const viewport = useRef<HTMLDivElement>(null); // Ref for scrolling
+    const [isLoading, setIsLoading] = useState(false); // Loading state for API
+    const viewport = useRef<HTMLDivElement>(null);
 
     // Initial typewriter effect for the *last* AI message
     const { displayedText, isComplete } = useTypewriter(typingText, 20);
 
-    // Auto-scroll to bottom when messages change
+    // Auto-scroll logic
     useEffect(() => {
         if (viewport.current) {
             viewport.current.scrollTo({ top: viewport.current.scrollHeight, behavior: 'smooth' });
         }
-    }, [messages, displayedText]); // Also scroll as text types
+    }, [messages, displayedText, isLoading]);
 
-    // Sync typing text when a new AI message is added
+    // Sync typing text
     useEffect(() => {
         const lastMsg = messages[messages.length - 1];
-        if (lastMsg.role === 'ai') {
+        if (lastMsg?.role === 'ai') {
             setTypingText(lastMsg.text);
             setIsTyping(true);
         } else {
@@ -58,36 +63,62 @@ export function AiCommandConsole({ initialAlerts = [] }: AiCommandConsoleProps) 
         }
     }, [messages]);
 
-    const handleChipClick = (label: string, response: string) => {
-        // 1. Add User Message
-        const userMsg: AiMessage = { id: Date.now().toString(), role: 'user', text: label };
-        setMessages(prev => [...prev, userMsg]);
+    const handleSendMessage = async (text: string) => {
+        if (!text.trim() || isLoading) return;
 
-        // 2. Simulate AI Thinking & Response
-        setTimeout(() => {
-            const aiMsg: AiMessage = { id: (Date.now() + 1).toString(), role: 'ai', text: response };
+        // 1. Add User Message
+        const userMsg: AiMessage = { id: Date.now().toString(), role: 'user', text };
+        setMessages(prev => [...prev, userMsg]);
+        setIsLoading(true);
+
+        // 2. Call Server Action
+        try {
+            // Include alerts in context if not strictly passed
+            const enrichedContext = { ...contextData, currentAlerts: initialAlerts };
+            const response = await askAiAssistant(text, enrichedContext);
+
+            const aiMsg: AiMessage = {
+                id: (Date.now() + 1).toString(),
+                role: 'ai',
+                text: response.text || "죄송합니다. 응답을 받을 수 없습니다."
+            };
             setMessages(prev => [...prev, aiMsg]);
-        }, 600);
+        } catch (e) {
+            const errorMsg: AiMessage = {
+                id: (Date.now() + 1).toString(),
+                role: 'ai',
+                text: "죄송합니다. 오류가 발생했습니다."
+            };
+            setMessages(prev => [...prev, errorMsg]);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
+    const handleChipClick = (label: string) => {
+        handleSendMessage(label);
+    };
 
     const chips: ActionChip[] = [
         {
             id: 'cost',
             label: '식자재 비용 분석해줘 🥩',
-            action: () => handleChipClick('식자재 비용 분석해줘', '최근 **돼지고기 가격이 15% 상승**한 것이 주원인입니다. \n다른 거래처와 비교해볼까요? [거래처 비교하기]')
+            action: () => handleChipClick('식자재 비용 분석해줘')
         },
         {
             id: 'predict',
             label: '오늘 매출 예측해줘 🔮',
-            action: () => handleChipClick('오늘 매출 예측해줘', '현재 추세라면 오늘 약 **150만원** 매출이 예상됩니다. \n저녁 7시에 피크가 올 것 같아요.')
+            action: () => handleChipClick('오늘 매출 예측해줘')
         },
         {
             id: 'praise',
             label: '칭찬해줘 👏',
-            action: () => handleChipClick('칭찬해줘', '정말 잘하고 계십니다! 🚀 \n지난주보다 **재방문율이 5%**나 올랐어요. 손님들이 사장님 친절함을 아나봐요.')
+            action: () => handleChipClick('칭찬해줘')
         }
     ];
+
+    // Input handling state
+    const [inputValue, setInputValue] = useState('');
 
     return (
         <Paper
@@ -151,23 +182,59 @@ export function AiCommandConsole({ initialAlerts = [] }: AiCommandConsoleProps) 
 
             {/* Input / Chips Area */}
             <Box mt="md" pt="sm" style={{ borderTop: '1px solid #374151' }}>
-                <Text size="xs" c="dimmed" mb="xs" fw={600}>사장님, 무엇을 도와드릴까요?</Text>
-                <Group gap="xs">
-                    {chips.map(chip => (
-                        <Button
-                            key={chip.id}
-                            variant="light"
-                            color="indigo"
-                            size="compact-sm"
-                            radius="xl"
-                            onClick={chip.action}
-                            disabled={!isComplete && messages[messages.length - 1].role === 'ai'} // Disable while typing
-                            style={{ border: '1px solid rgba(79, 70, 229, 0.2)' }}
-                        >
-                            {chip.label}
-                        </Button>
-                    ))}
-                </Group>
+                {isLoading ? (
+                    <Text size="sm" c="dimmed" ta="center" className="animate-pulse">
+                        <IconSparkles size={16} style={{ marginRight: 4, display: 'inline' }} />
+                        AI가 분석 중입니다...
+                    </Text>
+                ) : (
+                    <>
+                        <Group gap={8} mb="sm">
+                            <TextInput
+                                placeholder="무엇이든 물어보세요..."
+                                value={inputValue}
+                                onChange={(e) => setInputValue(e.currentTarget.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                                        handleSendMessage(inputValue);
+                                        setInputValue('');
+                                    }
+                                }}
+                                style={{ flex: 1 }}
+                                styles={{ input: { backgroundColor: '#374151', color: 'white', borderColor: 'transparent' } }}
+                                rightSection={
+                                    <ActionIcon
+                                        variant="filled"
+                                        color="indigo"
+                                        size="sm"
+                                        onClick={() => {
+                                            handleSendMessage(inputValue);
+                                            setInputValue('');
+                                        }}
+                                    >
+                                        <IconSend size={14} />
+                                    </ActionIcon>
+                                }
+                            />
+                        </Group>
+                        <Text size="xs" c="dimmed" mb="xs" fw={600}>추천 질문:</Text>
+                        <Group gap="xs">
+                            {chips.map(chip => (
+                                <Button
+                                    key={chip.id}
+                                    variant="light"
+                                    color="indigo"
+                                    size="compact-sm"
+                                    radius="xl"
+                                    onClick={chip.action}
+                                    style={{ border: '1px solid rgba(79, 70, 229, 0.2)' }}
+                                >
+                                    {chip.label}
+                                </Button>
+                            ))}
+                        </Group>
+                    </>
+                )}
             </Box>
         </Paper>
     );

@@ -11,7 +11,8 @@ import {
     IconMessageCircle,
     IconBuildingStore,
     IconLogout,
-    IconUsers
+    IconUsers,
+    IconBulb
 } from '@tabler/icons-react';
 import { useStore } from '../_contexts/store-context';
 
@@ -34,6 +35,7 @@ export function DesktopSidebar() {
             { icon: IconChartPie, label: '대시보드', href: '/dashboard' },
             { icon: IconPlus, label: '매출입력', href: '/sales' },
             { icon: IconReceipt, label: '지출관리', href: '/expenses' },
+            { icon: IconBulb, label: '수익설계사', href: '/strategy' },
             { icon: IconCalendarStats, label: '캘린더', href: '/calendar' },
             { icon: IconMessageCircle, label: '타임라인', href: '/timeline' },
             { icon: IconUsers, label: '직원관리', href: '/staff' },

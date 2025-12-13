@@ -98,7 +98,16 @@ export default function DashboardPage() {
                 <Grid.Col span={{ base: 12, md: 8 }}>
                     <Box h={500}> {/* Wrapper to enforce height */}
                         <Box h={500}> {/* Wrapper to enforce height */}
-                            <AiCommandConsole initialAlerts={data.alerts} />
+                            <AiCommandConsole
+                                initialAlerts={data.alerts}
+                                contextData={{
+                                    date: data.date,
+                                    sales: data.sales,
+                                    netIncome: data.netIncome,
+                                    weeklyTrend: data.weeklyTrend,
+                                    breakdown: data.breakdown
+                                }}
+                            />
                         </Box>
                     </Box>
                 </Grid.Col>

@@ -97,25 +97,26 @@ export default function ExpenseUploadPage() {
             });
             setFinalImageBlob(compressedFile);
 
-            // Mock OCR Analysis
-            const formData = new FormData();
-            formData.append('image', compressedFile);
+            // Real OCR Analysis (Client Side)
+            // Dynamic import to avoid SSR issues with Tesseract
+            const { parseExpenseReceipt } = await import('../_utils/receipt-ocr');
+            const result = await parseExpenseReceipt(compressedFile);
 
-            const result = await analyzeReceipt(formData); // This is the server action
-            if (result.success && result.data) {
+            if (result) {
                 setOcrData({
-                    merchant_name: result.data.merchant_name,
-                    amount: result.data.amount,
-                    date: new Date(result.data.date),
-                    category: result.data.category,
+                    merchant_name: result.merchant_name,
+                    amount: result.amount,
+                    date: new Date(result.date),
+                    category: result.category,
                 });
                 setStep('verify');
             } else {
                 alert('영수증 인식에 실패했습니다.');
             }
-        } catch (e) {
+
+        } catch (e: any) {
             console.error(e);
-            alert('이미지 처리 중 오류가 발생했습니다.');
+            alert(`이미지 처리 중 오류가 발생했습니다: ${e.message}`);
         } finally {
             setAnalyzing(false);
         }

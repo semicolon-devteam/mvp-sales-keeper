@@ -5,38 +5,40 @@ import { addExpense, getExpenses } from './_repositories/expenses-repository';
 import { createClient } from '@/app/_shared/utils/supabase/server';
 
 export async function analyzeReceipt(formData: FormData) {
-    // This is a Mock OCR implementation
-    // In a real app, we would send the image to Google Cloud Vision API
-
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
     // Validating image presence
     const file = formData.get('image') as File;
     if (!file) return { error: 'No image provided' };
 
-    // --- Mock Logic: Return random realistic data ---
-    const mockData = [
-        { merchant: '신세계백화점 강남점', category: '쇼핑', amount: 125000 },
-        { merchant: '스타벅스 역삼대로점', category: '식비', amount: 8200 },
-        { merchant: 'GS25 편의점', category: '간식', amount: 4500 },
-        { merchant: '쿠팡 로켓배송', category: '온라인쇼핑', amount: 19800 },
-        { merchant: '배달의민족', category: '식비', amount: 24000 },
-        { merchant: 'SK주유소', category: '교통/차량', amount: 50000 },
-    ];
+    try {
+        // Dynamic import to avoid server-side bundling issues with canvas/tesseract if tricky
+        // But usually standard import works if Tesseract is set up right? 
+        // Let's rely on the utility we just made. 
+        // Note: Tesseract.js in Server Actions might be slow or require node canvas.
+        // It's often better to run Tesseract on Client, but User asked for "API style".
+        // Let's try running it here. If node environment issues arise, we move it to client.
 
-    // Pick based on random index (simulate AI detection variablity)
-    const randomPick = mockData[Math.floor(Math.random() * mockData.length)];
+        // Actually best practice for basic Tesseract is Client Side to save server CPU.
+        // But let's stick to the current action structure.
 
-    return {
-        success: true,
-        data: {
-            merchant_name: randomPick.merchant,
-            amount: randomPick.amount,
-            date: new Date().toISOString().split('T')[0],
-            category: randomPick.category // Auto-assigned category
-        }
-    };
+        // Wait... Tesseract.js node support is good.
+
+        // We cannot pass File object directly to some node utils easily without arraybuffer conversion.
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+
+        // Import the utility
+        const { parseExpenseReceipt } = await import('./_utils/receipt-ocr');
+        const data = await parseExpenseReceipt(new Blob([buffer]));
+
+        return {
+            success: true,
+            data
+        };
+
+    } catch (e: any) {
+        console.error("OCR Error:", e);
+        return { error: '영수증 인식 실패: ' + e.message };
+    }
 }
 
 // --- Manual Entry Action ---
