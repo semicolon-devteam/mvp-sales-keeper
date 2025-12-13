@@ -99,10 +99,13 @@ export default function CalendarPage() {
         }
     }, [date, viewScope]);
 
-    const getDayProps = (day: Date) => ({
-        selected: date ? dayjs(day).isSame(date, 'date') : false,
-        onClick: () => setDate(day),
-    });
+    const getDayProps = (dateStr: string) => {
+        const day = new Date(dateStr);
+        return {
+            selected: date ? dayjs(day).isSame(date, 'date') : false,
+            onClick: () => setDate(day),
+        };
+    };
 
     // Helper: Get Day Status Color
     const getDayStatus = (date: Date) => {
