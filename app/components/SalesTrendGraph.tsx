@@ -2,7 +2,7 @@
 
 import { Paper, Text, Group, Box } from '@mantine/core';
 import { IconArrowUpRight } from '@tabler/icons-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Defs, LinearGradient, Stop } from 'recharts';
+import { AreaChart, Area, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface SalesTrendGraphProps {
     data: {

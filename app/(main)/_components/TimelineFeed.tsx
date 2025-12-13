@@ -49,9 +49,9 @@ export function TimelineFeed({ keyTrigger }: { keyTrigger: number }) {
                 if (result.success && result.data) {
                     initial = {
                         date: new Date(result.data.date),
-                        merchant_name: result.data.merchant_name,
+                        merchant_name: (result.data as any).merchant_name || '',
                         amount: result.data.amount,
-                        category: result.data.category
+                        category: (result.data as any).category || ''
                     };
                 }
             } catch (e) {

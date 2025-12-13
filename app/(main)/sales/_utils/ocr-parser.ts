@@ -144,3 +144,6 @@ export const parseReceipt = async (file: File | string, onProgress?: (status: st
     };
 };
 
+// Alias for expense parsing (same logic as receipt)
+export const parseExpenseFromOCR = parseReceipt;
+

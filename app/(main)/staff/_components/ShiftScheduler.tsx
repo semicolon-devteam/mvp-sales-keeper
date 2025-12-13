@@ -97,8 +97,13 @@ export function ShiftScheduler() {
                 <Paper p="md" radius="lg" bg="#1F2937" style={{ border: '1px solid #374151', maxWidth: 350 }}>
                     <Calendar
                         static
-                        value={date}
-                        onDateChange={setDate}
+                        getDayProps={(dateStr) => {
+                            const d = new Date(dateStr);
+                            return {
+                                selected: date ? d.toDateString() === date.toDateString() : false,
+                                onClick: () => setDate(d)
+                            };
+                        }}
                         size="md"
                         styles={{
                             calendarHeader: { color: 'white' },
