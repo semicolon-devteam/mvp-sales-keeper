@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, Group, Avatar, Text, Stack, ActionIcon, Badge, Loader, Center, Image, Box, ThemeIcon, Button } from '@mantine/core';
 import { IconHeart, IconMessageCircle, IconDotsVertical, IconAlertTriangle, IconBoxSeam, IconCheck } from '@tabler/icons-react';
 import { useStore } from '../_contexts/store-context';
@@ -64,7 +64,7 @@ export function TimelineFeed({ keyTrigger }: { keyTrigger: number }) {
         setExpenseModalOpen(true);
     };
 
-    const fetchPosts = async () => {
+    const fetchPosts = useCallback(async () => {
         if (!currentStore) return;
         setLoading(true);
         try {
@@ -81,11 +81,11 @@ export function TimelineFeed({ keyTrigger }: { keyTrigger: number }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentStore, supabase]);
 
     useEffect(() => {
         fetchPosts();
-    }, [currentStore, keyTrigger]);
+    }, [fetchPosts, keyTrigger]);
 
     if (!currentStore) return null;
     if (loading && posts.length === 0) return <Center p="xl"><Loader size="sm" color="teal" /></Center>;
