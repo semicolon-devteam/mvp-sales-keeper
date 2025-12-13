@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Debugger</title>
+    <script src="/static/tesseract/tesseract.min.js"></script>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #0f0;
+        }
+
+        .log {
+            margin-bottom: 5px;
+            border-bottom: 1px solid #333;
+        }
+
+        .error {
+            color: #f55;
+        }
+
+        .success {
+            color: #5f5;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>OCR Engine Diagnostic</h1>
+    <div id="logs"></div>
+
+    <script type="module">
+        // Tesseract is global because of the script tag above
+        const logDiv = document.getElementById('logs');
+        function log(msg, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logDiv.appendChild(div);
+            console.log(msg);
+        }
+
+        async function runTest() {
+            log("Starting Diagnostic...", "info");
+
+            try {
+                // 1. Check file accessibility
+                log("Checking file accessibility...", "info");
+                const files = [
+                    '/static/tesseract/worker.min.js',
+                    '/static/tesseract/tesseract-core.js',
+                    '/static/tesseract/tesseract-core.wasm',
+                    '/static/tesseract/kor.traineddata.gz'
+                ];
+
+                for (const f of files) {
+                    try {
+                        const res = await fetch(f, { method: 'HEAD' });
+                        if (res.ok) log(`File OK: ${f} (Status: ${res.status}, Type: ${res.headers.get('content-type')})`, "success");
+                        else log(`File Missing/Error: ${f} (Status: ${res.status})`, "error");
+                    } catch (e) {
+                        log(`Network Error checking ${f}: ${e.message}`, "error");
+                    }
+                }
+
+                log("Initializing Tesseract Worker...", "info");
+
+                // Use the exact config we want to use in production
+                const worker = await Tesseract.createWorker('kor', 1, {
+                    workerPath: window.location.origin + '/static/tesseract/worker.min.js',
+                    corePath: window.location.origin + '/static/tesseract/tesseract-core.wasm.js',
+                    langPath: window.location.origin + '/static/tesseract/',
+                    gzip: true,
+                    logger: m => log(`[Worker] ${m.status} (${Math.round((m.progress || 0) * 100)}%)`, "info")
+                });
+
+                log("Worker Created! Attempting Recognition...", "success");
+
+                log("Worker Created! Attempting Recognition on sample image...", "info");
+
+                // Base64 image containing text "hello" (simplified for testing)
+                // Actually, just use a canvas with text drawn on it to be self-contained
+                const canvas = document.createElement('canvas');
+                canvas.width = 100;
+                canvas.height = 50;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, 100, 50);
+                ctx.fillStyle = 'black';
+                ctx.font = '20px Arial';
+                ctx.fillText('hello', 10, 30);
+                const dataUrl = canvas.toDataURL();
+
+                const ret = await worker.recognize(dataUrl);
+                log("Recognition Result: " + ret.data.text.trim(), "success");
+
+                await worker.terminate();
+                log("Test Complete: GENUINE SUCCESS (OCR actually worked).", "success");
+
+            } catch (err) {
+                log(`FATAL ERROR: ${err.message}`, "error");
+                log(err.stack, "error");
+            }
+        }
+
+        // Run automatically
+        setTimeout(runTest, 1000);
+    </script>
+</body>
+
+</html>

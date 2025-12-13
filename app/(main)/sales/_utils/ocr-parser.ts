@@ -1,16 +1,52 @@
-import Tesseract from 'tesseract.js';
 import { ParsedSaleData, ParsedSaleItem } from './excel-parser';
 
-export const parseReceipt = async (file: File | string): Promise<ParsedSaleData> => {
+// Tesseract is loaded globally in layout.tsx via <Script>
+export const parseReceipt = async (file: File | string, onProgress?: (status: string) => void): Promise<ParsedSaleData> => {
     // 1. Recognize Text
-    const { data: { text } } = await Tesseract.recognize(
-        file as any,
-        'kor+eng', // Dual language for best results
-        {
-            logger: m => console.log(m), // Optional logging
-            // Improve accuracy for sparse text if needed?
-        }
+    if (onProgress) onProgress('AI 엔진 초기화 준비 중... (글로벌 엔진 확인)');
+
+    // Timeout Promise
+    const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("AI 엔진 다운로드가 너무 오래 걸립니다. 인터넷 연결을 확인하거나 잠시 후 다시 시도해주세요.")), 30000)
     );
+
+    // Ensure Tesseract is available
+    const Tesseract = (window as any).Tesseract;
+    if (!Tesseract) {
+        throw new Error("AI 엔진(Tesseract)이 로드되지 않았습니다. 새로고침 후 다시 시도해주세요.");
+    }
+
+    // Explicitly using connection-local files to avoid CDN timeouts
+    // Files copied to public/static/tesseract/ from node_modules and downloaded manually
+    const workerPromise = Tesseract.createWorker('kor', 1, {
+        workerPath: window.location.origin + '/static/tesseract/worker.min.js',
+        // Use the large Core file as proven by diagnostic page
+        corePath: window.location.origin + '/static/tesseract/tesseract-core.wasm.js',
+        langPath: window.location.origin + '/static/tesseract/',
+        gzip: true,
+        logger: (m: any) => {
+            console.log(m);
+            if (onProgress) {
+                const pct = m.progress ? Math.round(m.progress * 100) : 0;
+                const statusMap: Record<string, string> = {
+                    'loading tesseract core': 'Tesseract 엔진(Core) 다운로드 중...',
+                    'initializing tesseract': '엔진 시동 거는 중...',
+                    'loading language traineddata': '한글 데이터(20MB) 다운로드 중...',
+                    'initializing api': 'API 초기화 중...',
+                    'recognizing text': '글자 인식 중...',
+                };
+                const msg = statusMap[m.status] || m.status;
+                onProgress(`${msg} ${pct > 0 ? `(${pct}%)` : ''}`);
+            }
+        }
+    });
+
+    // Race between worker creation and timeout
+    const worker: any = await Promise.race([workerPromise, timeout]);
+
+    if (onProgress) onProgress('글자 인식을 시작합니다...');
+    const { data: { text } }: { data: { text: string } } = await worker.recognize(file as any);
+    await worker.terminate();
 
     console.log("OCR Result:", text);
 
@@ -18,7 +54,7 @@ export const parseReceipt = async (file: File | string): Promise<ParsedSaleData>
     // Heuristic: Look for the 'Totals' and 'Date'.
     // Then look for line items.
 
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const lines = text.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
     const items: ParsedSaleItem[] = [];
     let grandTotal = 0;
     let dateStr = new Date().toISOString().split('T')[0]; // Default today
@@ -103,7 +139,7 @@ export const parseReceipt = async (file: File | string): Promise<ParsedSaleData>
     return {
         date: dateStr,
         amount: grandTotal,
-        platform: 'manual',
+        platform: 'unknown',
         items: items
     };
 };

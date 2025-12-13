@@ -33,7 +33,7 @@ export default function StrategyPage() {
                 setSelectedItem(res.data[0]);
             }
         } else {
-            notifications.show({ title: '오류', message: '데이터 로드 실패', color: 'red' });
+            notifications.show({ title: '오류', message: res.error || '데이터 로드 실패', color: 'red' });
         }
         setLoading(false);
     };

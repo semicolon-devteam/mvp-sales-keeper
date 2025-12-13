@@ -17,16 +17,27 @@ export async function getMenuAnalysis(storeId: string) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Unauthorized');
 
-    // 1. Fetch Sales Items joined with Sales (to filter by store/user)
-    // We ideally want: select * from sale_items join mvp_sales on sale_items.sale_id = mvp_sales.id where mvp_sales.user_id = ...
+    // 1. Fetch Sales (to filter by store/user)
+    const { data: sales, error: salesFetchError } = await supabase
+        .from('mvp_sales')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('store_id', storeId);
+
+    if (salesFetchError) throw salesFetchError;
+
+    const saleIds = sales.map(s => s.id);
+
+    // If no sales found, return empty result early
+    if (saleIds.length === 0) {
+        return [];
+    }
+
+    // 2. Fetch Sale Items
     const { data: salesData, error: salesError } = await supabase
         .from('sale_items')
-        .select(`
-            name, quantity, total_price, unit_price,
-            mvp_sales!inner ( user_id, store_id )
-        `)
-        .eq('mvp_sales.user_id', user.id)
-        .eq('mvp_sales.store_id', storeId);
+        .select('name, quantity, total_price, unit_price')
+        .in('sale_id', saleIds);
 
     if (salesError) throw salesError;
 

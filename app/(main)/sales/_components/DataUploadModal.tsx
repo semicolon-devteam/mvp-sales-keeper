@@ -19,6 +19,7 @@ export function DataUploadModal({ opened, onClose, onSuccess }: DataUploadModalP
     const [parsedData, setParsedData] = useState<any[]>([]);
     const [step, setStep] = useState<'upload' | 'preview'>('upload');
     const [loading, setLoading] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState<string>('');
     const [activeTab, setActiveTab] = useState<string | null>('excel');
     const [recentItems, setRecentItems] = useState<{ name: string, price: number }[]>([]);
     const { currentStore } = useStore();
@@ -36,6 +37,7 @@ export function DataUploadModal({ opened, onClose, onSuccess }: DataUploadModalP
     const handleDrop = async (files: File[]) => {
         setFiles(files);
         setLoading(true);
+        setUploadStatus('파일 분석 시작...');
         try {
             const file = files[0];
             let data: any[] = [];
@@ -47,7 +49,7 @@ export function DataUploadModal({ opened, onClose, onSuccess }: DataUploadModalP
                 const { parseReceipt } = await import('../_utils/ocr-parser');
                 // parseReceipt returns ParsedSaleData[] (as per previous turn's fix/verification)
                 // but let's be safe and check if it returns a single object or array
-                const result = await parseReceipt(file);
+                const result = await parseReceipt(file, setUploadStatus);
                 data = Array.isArray(result) ? result : [result];
             }
 
@@ -108,6 +110,11 @@ export function DataUploadModal({ opened, onClose, onSuccess }: DataUploadModalP
         >
             <Stack gap="xl" pos="relative" mih={400}>
                 <LoadingOverlay visible={loading} overlayProps={{ radius: "sm", blur: 2 }} />
+                {loading && (
+                    <Stack align="center" gap="xs" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 1000 }}>
+                        <Text c="white" fw={500}>{uploadStatus}</Text>
+                    </Stack>
+                )}
 
                 {step === 'upload' && (
                     <Tabs value={activeTab} onChange={setActiveTab} variant="outline" color="teal" styles={{ tabLabel: { color: 'white' } }}>
