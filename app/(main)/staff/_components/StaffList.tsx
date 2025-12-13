@@ -86,7 +86,7 @@ export function StaffList() {
                                         {member.user_id ? (member.alias?.[0] || 'U') : 'E'}
                                     </Avatar>
                                     <Stack gap={0}>
-                                        <Text fw={700} c="white">{member.alias || '직원 ' + member.user_id.slice(0, 4)}</Text>
+                                        <Text fw={700} c="white">{member.alias || '직원 ' + (member.user_id?.slice(0, 4) || 'N/A')}</Text>
                                         <Group gap={6}>
                                             <Badge size="xs" color={member.role === 'owner' ? 'grape' : 'blue'}>
                                                 {member.role === 'owner' ? '사장님' : '매니저'}

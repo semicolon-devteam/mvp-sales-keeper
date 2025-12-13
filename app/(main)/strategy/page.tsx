@@ -1,7 +1,7 @@
 'use client';
 
 import { Title, Text, SimpleGrid, Paper, Stack, Group, ThemeIcon, Badge, Slider, Button, Modal, NumberInput, LoadingOverlay } from '@mantine/core';
-import { IconBulb, IconTrendingUp, IconAlertTriangle, IconRocket, IconChefHat, IconCurrencyWon, IconReceipt, IconFlame, IconRefresh } from '@tabler/icons-react';
+import { IconBulb, IconTrendingUp, IconAlertTriangle, IconChefHat, IconCurrencyWon, IconReceipt, IconFlame, IconRefresh } from '@tabler/icons-react';
 import { useState, useEffect, useCallback } from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
 import { useDisclosure } from '@mantine/hooks';
@@ -12,6 +12,7 @@ import { EmptyState } from '../_components/EmptyState';
 import { IconChartBar } from '@tabler/icons-react';
 import { MarginAlertBanner } from './_components/MarginAlertBanner';
 import { IngredientReceiptModal } from './_components/IngredientReceiptModal';
+import { AiStrategyCoach } from './_components/AiStrategyCoach';
 
 export default function StrategyPage() {
     const { currentStore } = useStore();
@@ -310,22 +311,20 @@ export default function StrategyPage() {
                                 </Paper>
                             ) : (
                                 <>
-                                    {/* Analysis Card */}
-                                    <Paper p="md" bg="rgba(0,0,0,0.2)" radius="md">
-                                        <Group align="flex-start">
-                                            <IconRocket size={24} color="#FFD700" />
-                                            <div>
-                                                <Text size="sm" fw={700} c="white">AI 분석 리포트</Text>
-                                                <Text size="sm" c="gray.4" mt={4}>
-                                                    현재 마진율은 <strong>{selectedItem.margin.toFixed(1)}%</strong> 입니다.
-                                                    {selectedItem.type === 'star' && ' 효자 상품이네요! 가격 유지를 추천합니다.'}
-                                                    {selectedItem.type === 'cashcow' && ' 많이 팔리지만 마진이 적습니다. 가격을 소폭 인상해도 좋을까요?'}
-                                                    {selectedItem.type === 'dog' && ' 판매량과 마진 모두 저조합니다. 레시피 개선이나 메뉴 제외를 고려해보세요.'}
-                                                    {selectedItem.type === 'gem' && ' 숨은 보석입니다! 홍보를 강화하면 매출이 오를 수 있어요.'}
-                                                </Text>
-                                            </div>
-                                        </Group>
-                                    </Paper>
+                                    {/* AI Strategy Coach */}
+                                    <AiStrategyCoach
+                                        menu={{
+                                            id: selectedItem.id,
+                                            name: selectedItem.name,
+                                            price: selectedItem.price,
+                                            cost: selectedItem.cost,
+                                            margin: selectedItem.margin,
+                                            quantity: selectedItem.quantity,
+                                            totalProfit: selectedItem.totalProfit,
+                                            type: selectedItem.type
+                                        }}
+                                        storeId={currentStore?.id}
+                                    />
 
                                     {/* Simulator Controls */}
                                     <Stack gap="xs">

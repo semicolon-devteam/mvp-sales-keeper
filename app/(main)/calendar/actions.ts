@@ -31,13 +31,24 @@ export async function getMonthlyData(dateInput: Date | string, storeId?: string,
 
     // Calculate range: Previous Month 20th ~ Current Month End
     // This covers settlement delays (max ~7 days usually) so sales from late last month appear in this month.
-    const prevMonthDate = new Date(year, month - 2, 20); // Month is 0-indexed in JS Date? Wait. month passed in is 1-indexed.
+    const prevMonthDate = new Date(year, month - 2, 20); // Month is 0-indexed in JS Date
     // constructor(year, monthIndex, day)
     // input month is 1-12. So current month index is month-1. Prev month index is month-2.
     // Example: View Feb (month=2). prevMonthDate = new Date(2025, 0, 20) -> Jan 20. Correct.
 
-    const startDateStr = prevMonthDate.toISOString().split('T')[0];
-    const endDateStr = new Date(year, month, 0).toISOString().split('T')[0]; // Current month last day
+    // Current month last day - use Date object properly to handle month overflow
+    const lastDayOfMonth = new Date(year, month, 0); // month (1-indexed) gives last day of that month
+
+    // Format dates safely (YYYY-MM-DD)
+    const formatDate = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    };
+
+    const startDateStr = formatDate(prevMonthDate);
+    const endDateStr = formatDate(lastDayOfMonth);
 
     // Use broader fetch for Sales
     const [sales, expenses] = await Promise.all([
@@ -58,8 +69,8 @@ export async function getMonthlyData(dateInput: Date | string, storeId?: string,
             }
         }
 
-        // Convert back to YYYY-MM-DD
-        const dateStr = targetDate.toISOString().split('T')[0];
+        // Convert back to YYYY-MM-DD using safe formatting
+        const dateStr = formatDate(targetDate);
 
         // Filter: Only include if valid date (should be fine)
         if (targetDate.getMonth() + 1 !== month && mode === 'sales') return; // Strict sales mode matches month

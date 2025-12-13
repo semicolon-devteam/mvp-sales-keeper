@@ -2,19 +2,22 @@
 
 import {
     Modal, Stack, Text, Button, Group, Paper, Table, NumberInput,
-    TextInput, ActionIcon, Badge, LoadingOverlay, Progress, Alert
+    TextInput, ActionIcon, Badge, LoadingOverlay, Progress, Alert,
+    Select, Tooltip, RingProgress, ThemeIcon
 } from '@mantine/core';
 import { Dropzone, IMAGE_MIME_TYPE } from '@mantine/dropzone';
 import {
-    IconUpload, IconPhoto, IconX, IconCheck, IconAlertCircle,
-    IconReceipt, IconEdit, IconTrash, IconSparkles
+    IconUpload, IconX, IconCheck, IconAlertCircle,
+    IconReceipt, IconEdit, IconTrash, IconSparkles,
+    IconLink, IconPlus, IconBrain, IconArrowRight
 } from '@tabler/icons-react';
 import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
 import {
     extractIngredientsFromReceipt,
-    processExpenseOcrForIngredients,
-    type ParsedIngredientItem
+    smartMatchIngredients,
+    processSmartMatchedItems,
+    type SmartMatchedItem
 } from '../live-cost-actions';
 
 interface IngredientReceiptModalProps {
@@ -24,14 +27,13 @@ interface IngredientReceiptModalProps {
     onComplete?: (result: any) => void;
 }
 
-type ProcessingStep = 'upload' | 'extracting' | 'review' | 'processing' | 'complete';
+type ProcessingStep = 'upload' | 'extracting' | 'matching' | 'review' | 'processing' | 'complete';
 
 export function IngredientReceiptModal({ opened, onClose, storeId, onComplete }: IngredientReceiptModalProps) {
     const [step, setStep] = useState<ProcessingStep>('upload');
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [imageBase64, setImageBase64] = useState<string | null>(null);
-    const [items, setItems] = useState<ParsedIngredientItem[]>([]);
-    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [items, setItems] = useState<SmartMatchedItem[]>([]);
     const [result, setResult] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -40,7 +42,6 @@ export function IngredientReceiptModal({ opened, onClose, storeId, onComplete }:
         setImagePreview(null);
         setImageBase64(null);
         setItems([]);
-        setEditingIndex(null);
         setResult(null);
         setError(null);
     }, []);
@@ -56,12 +57,10 @@ export function IngredientReceiptModal({ opened, onClose, storeId, onComplete }:
         const file = files[0];
         setError(null);
 
-        // 이미지 미리보기
         const reader = new FileReader();
         reader.onload = () => {
             const result = reader.result as string;
             setImagePreview(result);
-            // base64 데이터만 추출 (data:image/jpeg;base64, 제거)
             const base64 = result.split(',')[1];
             setImageBase64(base64);
         };
@@ -75,14 +74,26 @@ export function IngredientReceiptModal({ opened, onClose, storeId, onComplete }:
         setError(null);
 
         try {
+            // Step 1: AI로 영수증에서 식자재 추출
             const response = await extractIngredientsFromReceipt(imageBase64);
 
             if (response.success && response.data) {
-                setItems(response.data.items || []);
-                setStep('review');
-
                 if (response.data.items.length === 0) {
                     setError('영수증에서 식자재를 찾지 못했습니다. 수동으로 입력해주세요.');
+                    setStep('upload');
+                    return;
+                }
+
+                // Step 2: 스마트 매칭 수행
+                setStep('matching');
+                const matchResponse = await smartMatchIngredients(response.data.items, storeId);
+
+                if (matchResponse.success && matchResponse.data) {
+                    setItems(matchResponse.data);
+                    setStep('review');
+                } else {
+                    setError(matchResponse.error || '매칭에 실패했습니다.');
+                    setStep('upload');
                 }
             } else {
                 setError(response.error || 'AI 분석에 실패했습니다.');
@@ -94,17 +105,49 @@ export function IngredientReceiptModal({ opened, onClose, storeId, onComplete }:
         }
     };
 
-    const handleItemChange = (index: number, field: keyof ParsedIngredientItem, value: any) => {
+    const handleItemChange = (index: number, field: string, value: any) => {
         setItems(prev => {
             const newItems = [...prev];
-            newItems[index] = { ...newItems[index], [field]: value };
+            if (field === 'matchType') {
+                // 매칭 타입 변경 (기존 → 신규 또는 그 반대)
+                newItems[index] = {
+                    ...newItems[index],
+                    matchResult: {
+                        ...newItems[index].matchResult!,
+                        matchType: value
+                    }
+                };
+            } else if (field.startsWith('matchResult.')) {
+                const subField = field.replace('matchResult.', '');
+                newItems[index] = {
+                    ...newItems[index],
+                    matchResult: {
+                        ...newItems[index].matchResult!,
+                        [subField]: value
+                    }
+                };
+            } else {
+                newItems[index] = { ...newItems[index], [field]: value };
+            }
             return newItems;
         });
     };
 
     const handleAddItem = () => {
-        setItems(prev => [...prev, { name: '', price: 0, quantity: 1, unit: 'kg' }]);
-        setEditingIndex(items.length);
+        setItems(prev => [...prev, {
+            name: '',
+            price: 0,
+            quantity: 1,
+            unit: 'kg',
+            matchResult: {
+                ingredientId: '',
+                ingredientName: '',
+                score: 0,
+                matchType: 'new'
+            },
+            suggestedCategory: '기타',
+            suggestedUnit: 'kg'
+        }]);
     };
 
     const handleRemoveItem = (index: number) => {
@@ -121,24 +164,37 @@ export function IngredientReceiptModal({ opened, onClose, storeId, onComplete }:
         setError(null);
 
         try {
-            const response = await processExpenseOcrForIngredients(items, storeId);
+            const response = await processSmartMatchedItems(items, storeId);
 
             if (response.success && response.data) {
                 setResult(response.data);
                 setStep('complete');
 
                 // 알림 표시
-                if (response.data.alerts.length > 0) {
+                const { updated, created, alerts } = response.data;
+
+                if (alerts.length > 0) {
                     notifications.show({
                         title: '🔥 마진 위험 감지!',
-                        message: `${response.data.alerts.length}개 메뉴의 마진이 위험 수준입니다.`,
+                        message: `${alerts.length}개 메뉴의 마진이 위험 수준입니다.`,
                         color: 'red',
                         autoClose: 5000
                     });
-                } else if (response.data.matched.length > 0) {
+                }
+
+                if (created.length > 0) {
+                    notifications.show({
+                        title: '✨ 신규 식자재 등록',
+                        message: `${created.length}개 식자재가 새로 등록되었습니다.`,
+                        color: 'indigo',
+                        autoClose: 3000
+                    });
+                }
+
+                if (updated.length > 0) {
                     notifications.show({
                         title: '✅ 원가 업데이트 완료',
-                        message: `${response.data.matched.length}개 식자재의 가격이 업데이트되었습니다.`,
+                        message: `${updated.length}개 식자재의 가격이 업데이트되었습니다.`,
                         color: 'teal',
                         autoClose: 3000
                     });
@@ -155,6 +211,25 @@ export function IngredientReceiptModal({ opened, onClose, storeId, onComplete }:
         }
     };
 
+    // 매칭 스코어에 따른 색상
+    const getScoreColor = (score: number) => {
+        if (score >= 90) return 'teal';
+        if (score >= 70) return 'lime';
+        if (score >= 60) return 'yellow';
+        return 'red';
+    };
+
+    // 매칭 타입 라벨
+    const getMatchTypeLabel = (type: string) => {
+        switch (type) {
+            case 'exact': return { label: '정확', color: 'teal' };
+            case 'tag': return { label: '태그', color: 'cyan' };
+            case 'fuzzy': return { label: 'AI추론', color: 'grape' };
+            case 'new': return { label: '신규', color: 'pink' };
+            default: return { label: '?', color: 'gray' };
+        }
+    };
+
     const renderStep = () => {
         switch (step) {
             case 'upload':
@@ -162,7 +237,7 @@ export function IngredientReceiptModal({ opened, onClose, storeId, onComplete }:
                     <Stack gap="md">
                         <Text size="sm" c="dimmed" ta="center">
                             식자재 영수증을 업로드하면 AI가 자동으로 분석하여<br />
-                            메뉴 원가를 실시간으로 업데이트합니다.
+                            <Text component="span" c="teal" fw={600}>스마트 매칭</Text>으로 기존 식자재와 연결합니다.
                         </Text>
 
                         <Dropzone
@@ -229,10 +304,10 @@ export function IngredientReceiptModal({ opened, onClose, storeId, onComplete }:
                                     fullWidth
                                     mt="md"
                                     color="teal"
-                                    leftSection={<IconSparkles size={16} />}
+                                    leftSection={<IconBrain size={16} />}
                                     onClick={handleExtract}
                                 >
-                                    AI로 분석하기
+                                    AI 스마트 분석
                                 </Button>
                             </Paper>
                         )}
@@ -250,14 +325,43 @@ export function IngredientReceiptModal({ opened, onClose, storeId, onComplete }:
                     <Stack gap="md" align="center" py="xl">
                         <IconSparkles size={48} color="#20c997" className="animate-pulse" />
                         <Text size="lg" c="white" fw={500}>AI가 영수증을 분석하고 있습니다...</Text>
-                        <Progress value={100} animated color="teal" w="100%" />
-                        <Text size="xs" c="dimmed">잠시만 기다려주세요</Text>
+                        <Progress value={50} animated color="teal" w="100%" />
+                        <Text size="xs" c="dimmed">식자재 항목 추출 중</Text>
+                    </Stack>
+                );
+
+            case 'matching':
+                return (
+                    <Stack gap="md" align="center" py="xl">
+                        <IconBrain size={48} color="#be4bdb" className="animate-pulse" />
+                        <Text size="lg" c="white" fw={500}>스마트 매칭 중...</Text>
+                        <Progress value={100} animated color="grape" w="100%" />
+                        <Text size="xs" c="dimmed">기존 식자재와 연결하는 중</Text>
                     </Stack>
                 );
 
             case 'review':
+                const matchedCount = items.filter(i => i.matchResult?.matchType !== 'new').length;
+                const newCount = items.filter(i => i.matchResult?.matchType === 'new').length;
+
                 return (
                     <Stack gap="md">
+                        {/* 매칭 요약 */}
+                        <Paper p="md" radius="md" bg="rgba(79, 70, 229, 0.1)" style={{ border: '1px solid rgba(79, 70, 229, 0.3)' }}>
+                            <Group justify="space-between">
+                                <Group gap="xs">
+                                    <ThemeIcon variant="light" color="indigo" size="sm">
+                                        <IconBrain size={14} />
+                                    </ThemeIcon>
+                                    <Text size="sm" c="white" fw={500}>스마트 매칭 결과</Text>
+                                </Group>
+                                <Group gap="xs">
+                                    <Badge color="teal" variant="light">매칭 {matchedCount}개</Badge>
+                                    <Badge color="pink" variant="light">신규 {newCount}개</Badge>
+                                </Group>
+                            </Group>
+                        </Paper>
+
                         <Group justify="space-between">
                             <Text size="sm" c="white" fw={500}>
                                 추출된 식자재 ({items.length}개)
@@ -266,7 +370,7 @@ export function IngredientReceiptModal({ opened, onClose, storeId, onComplete }:
                                 variant="subtle"
                                 color="teal"
                                 size="xs"
-                                leftSection={<IconEdit size={14} />}
+                                leftSection={<IconPlus size={14} />}
                                 onClick={handleAddItem}
                             >
                                 항목 추가
@@ -283,65 +387,98 @@ export function IngredientReceiptModal({ opened, onClose, storeId, onComplete }:
                             <Table>
                                 <Table.Thead>
                                     <Table.Tr>
-                                        <Table.Th style={{ color: '#9CA3AF' }}>식자재명</Table.Th>
+                                        <Table.Th style={{ color: '#9CA3AF', width: 100 }}>매칭</Table.Th>
+                                        <Table.Th style={{ color: '#9CA3AF' }}>영수증 항목</Table.Th>
+                                        <Table.Th style={{ color: '#9CA3AF' }}>→</Table.Th>
+                                        <Table.Th style={{ color: '#9CA3AF' }}>연결 식자재</Table.Th>
                                         <Table.Th style={{ color: '#9CA3AF' }}>가격</Table.Th>
-                                        <Table.Th style={{ color: '#9CA3AF' }}>수량</Table.Th>
-                                        <Table.Th style={{ color: '#9CA3AF' }}>단위</Table.Th>
                                         <Table.Th style={{ width: 40 }}></Table.Th>
                                     </Table.Tr>
                                 </Table.Thead>
                                 <Table.Tbody>
-                                    {items.map((item, index) => (
-                                        <Table.Tr key={index}>
-                                            <Table.Td>
-                                                <TextInput
-                                                    value={item.name}
-                                                    onChange={(e) => handleItemChange(index, 'name', e.currentTarget.value)}
-                                                    size="xs"
-                                                    styles={{ input: { backgroundColor: '#374151', color: 'white', border: 'none' } }}
-                                                />
-                                            </Table.Td>
-                                            <Table.Td>
-                                                <NumberInput
-                                                    value={item.price}
-                                                    onChange={(v) => handleItemChange(index, 'price', v || 0)}
-                                                    size="xs"
-                                                    thousandSeparator
-                                                    suffix="원"
-                                                    styles={{ input: { backgroundColor: '#374151', color: 'white', border: 'none' } }}
-                                                />
-                                            </Table.Td>
-                                            <Table.Td>
-                                                <NumberInput
-                                                    value={item.quantity || 1}
-                                                    onChange={(v) => handleItemChange(index, 'quantity', v || 1)}
-                                                    size="xs"
-                                                    min={0.01}
-                                                    step={0.1}
-                                                    decimalScale={2}
-                                                    styles={{ input: { backgroundColor: '#374151', color: 'white', border: 'none', width: 60 } }}
-                                                />
-                                            </Table.Td>
-                                            <Table.Td>
-                                                <TextInput
-                                                    value={item.unit || 'kg'}
-                                                    onChange={(e) => handleItemChange(index, 'unit', e.currentTarget.value)}
-                                                    size="xs"
-                                                    styles={{ input: { backgroundColor: '#374151', color: 'white', border: 'none', width: 50 } }}
-                                                />
-                                            </Table.Td>
-                                            <Table.Td>
-                                                <ActionIcon
-                                                    variant="subtle"
-                                                    color="red"
-                                                    size="sm"
-                                                    onClick={() => handleRemoveItem(index)}
-                                                >
-                                                    <IconTrash size={14} />
-                                                </ActionIcon>
-                                            </Table.Td>
-                                        </Table.Tr>
-                                    ))}
+                                    {items.map((item, index) => {
+                                        const matchType = getMatchTypeLabel(item.matchResult?.matchType || 'new');
+                                        const score = item.matchResult?.score || 0;
+
+                                        return (
+                                            <Table.Tr key={index}>
+                                                <Table.Td>
+                                                    <Group gap={4}>
+                                                        {item.matchResult?.matchType !== 'new' && (
+                                                            <Tooltip label={`매칭 신뢰도 ${score}%`}>
+                                                                <RingProgress
+                                                                    size={28}
+                                                                    thickness={3}
+                                                                    sections={[{ value: score, color: getScoreColor(score) }]}
+                                                                    label={
+                                                                        <Text size="xs" ta="center" c="white" style={{ fontSize: 8 }}>
+                                                                            {score}
+                                                                        </Text>
+                                                                    }
+                                                                />
+                                                            </Tooltip>
+                                                        )}
+                                                        <Badge size="xs" color={matchType.color} variant="light">
+                                                            {matchType.label}
+                                                        </Badge>
+                                                    </Group>
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <TextInput
+                                                        value={item.name}
+                                                        onChange={(e) => handleItemChange(index, 'name', e.currentTarget.value)}
+                                                        size="xs"
+                                                        styles={{ input: { backgroundColor: '#374151', color: 'white', border: 'none' } }}
+                                                    />
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    {item.matchResult?.matchType !== 'new' ? (
+                                                        <IconLink size={14} color="#20c997" />
+                                                    ) : (
+                                                        <IconPlus size={14} color="#f06595" />
+                                                    )}
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    {item.matchResult?.matchType !== 'new' ? (
+                                                        <Text size="sm" c="teal.3">
+                                                            {item.matchResult?.ingredientName}
+                                                        </Text>
+                                                    ) : (
+                                                        <Group gap={4}>
+                                                            <Text size="xs" c="pink.3">(신규 등록)</Text>
+                                                            <Select
+                                                                size="xs"
+                                                                value={item.suggestedCategory || '기타'}
+                                                                onChange={(v) => handleItemChange(index, 'suggestedCategory', v)}
+                                                                data={['육류', '해산물', '채소', '과일', '양념/소스', '유제품', '곡류', '가공식품', '음료', '기타']}
+                                                                styles={{ input: { backgroundColor: '#374151', color: 'white', border: 'none', width: 80 } }}
+                                                            />
+                                                        </Group>
+                                                    )}
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <NumberInput
+                                                        value={item.price}
+                                                        onChange={(v) => handleItemChange(index, 'price', v || 0)}
+                                                        size="xs"
+                                                        thousandSeparator
+                                                        suffix="원"
+                                                        styles={{ input: { backgroundColor: '#374151', color: 'white', border: 'none', width: 100 } }}
+                                                    />
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <ActionIcon
+                                                        variant="subtle"
+                                                        color="red"
+                                                        size="sm"
+                                                        onClick={() => handleRemoveItem(index)}
+                                                    >
+                                                        <IconTrash size={14} />
+                                                    </ActionIcon>
+                                                </Table.Td>
+                                            </Table.Tr>
+                                        );
+                                    })}
                                 </Table.Tbody>
                             </Table>
                         </Paper>
@@ -352,11 +489,11 @@ export function IngredientReceiptModal({ opened, onClose, storeId, onComplete }:
                             </Button>
                             <Button
                                 color="teal"
-                                leftSection={<IconCheck size={16} />}
+                                leftSection={<IconArrowRight size={16} />}
                                 onClick={handleProcess}
                                 disabled={items.length === 0}
                             >
-                                원가 업데이트
+                                {newCount > 0 ? `등록 + 업데이트 (${items.length})` : `원가 업데이트 (${items.length})`}
                             </Button>
                         </Group>
                     </Stack>
@@ -377,22 +514,22 @@ export function IngredientReceiptModal({ opened, onClose, storeId, onComplete }:
                         <Paper p="lg" radius="md" bg="rgba(32, 201, 151, 0.1)" style={{ border: '1px solid #20c99740' }}>
                             <Stack gap="sm" align="center">
                                 <IconCheck size={48} color="#20c997" />
-                                <Text size="lg" c="white" fw={700}>업데이트 완료!</Text>
+                                <Text size="lg" c="white" fw={700}>처리 완료!</Text>
                             </Stack>
                         </Paper>
 
                         {result && (
                             <Stack gap="sm">
-                                {/* 매칭된 항목 */}
-                                {result.matched.length > 0 && (
-                                    <Paper p="md" radius="md" bg="rgba(0,0,0,0.2)">
+                                {/* 업데이트된 항목 */}
+                                {result.updated?.length > 0 && (
+                                    <Paper p="md" radius="md" bg="rgba(32, 201, 151, 0.1)">
                                         <Text size="sm" c="white" fw={500} mb="xs">
-                                            ✅ 업데이트된 식자재 ({result.matched.length})
+                                            ✅ 업데이트된 식자재 ({result.updated.length})
                                         </Text>
                                         <Stack gap={4}>
-                                            {result.matched.map((m: any, i: number) => (
+                                            {result.updated.map((m: any, i: number) => (
                                                 <Group key={i} justify="space-between">
-                                                    <Text size="sm" c="gray.3">{m.item.name}</Text>
+                                                    <Text size="sm" c="gray.3">{m.ingredient.name}</Text>
                                                     <Badge color="teal" variant="light">
                                                         {m.item.price.toLocaleString()}원
                                                     </Badge>
@@ -402,21 +539,23 @@ export function IngredientReceiptModal({ opened, onClose, storeId, onComplete }:
                                     </Paper>
                                 )}
 
-                                {/* 매칭 안 된 항목 */}
-                                {result.unmatched.length > 0 && (
-                                    <Paper p="md" radius="md" bg="rgba(255, 212, 59, 0.1)">
+                                {/* 신규 등록된 항목 */}
+                                {result.created?.length > 0 && (
+                                    <Paper p="md" radius="md" bg="rgba(190, 75, 219, 0.1)">
                                         <Text size="sm" c="white" fw={500} mb="xs">
-                                            ⚠️ 등록되지 않은 식자재 ({result.unmatched.length})
-                                        </Text>
-                                        <Text size="xs" c="dimmed" mb="xs">
-                                            식자재 관리에서 먼저 등록해주세요.
+                                            ✨ 신규 등록된 식자재 ({result.created.length})
                                         </Text>
                                         <Stack gap={4}>
-                                            {result.unmatched.map((item: any, i: number) => (
+                                            {result.created.map((m: any, i: number) => (
                                                 <Group key={i} justify="space-between">
-                                                    <Text size="sm" c="gray.3">{item.name}</Text>
-                                                    <Badge color="yellow" variant="light">
-                                                        {item.price.toLocaleString()}원
+                                                    <Group gap={4}>
+                                                        <Text size="sm" c="gray.3">{m.ingredient.name}</Text>
+                                                        <Badge size="xs" color="grape" variant="light">
+                                                            {m.ingredient.category}
+                                                        </Badge>
+                                                    </Group>
+                                                    <Badge color="grape" variant="light">
+                                                        {m.item.price.toLocaleString()}원
                                                     </Badge>
                                                 </Group>
                                             ))}
@@ -425,7 +564,7 @@ export function IngredientReceiptModal({ opened, onClose, storeId, onComplete }:
                                 )}
 
                                 {/* 마진 위험 알림 */}
-                                {result.alerts.length > 0 && (
+                                {result.alerts?.length > 0 && (
                                     <Paper p="md" radius="md" bg="rgba(255, 107, 107, 0.1)" style={{ border: '1px solid #fa525280' }}>
                                         <Text size="sm" c="white" fw={500} mb="xs">
                                             🔥 마진 위험 메뉴 ({result.alerts.length})
@@ -458,7 +597,7 @@ export function IngredientReceiptModal({ opened, onClose, storeId, onComplete }:
                 <Group gap="xs">
                     <IconReceipt size={20} />
                     <Text fw={700}>라이브 원가 엔진</Text>
-                    <Badge color="pink" variant="light" size="sm">AI</Badge>
+                    <Badge color="grape" variant="light" size="sm">스마트 매칭</Badge>
                 </Group>
             }
             size="lg"

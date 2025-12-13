@@ -10,7 +10,6 @@ import { useStore } from '../../_contexts/store-context';
 import { getStoreMembers } from '../../store/members/actions';
 import { createSchedule, deleteSchedule, getSchedules } from '../actions';
 import dayjs from 'dayjs';
-import { TimeInput } from '@mantine/dates';
 
 export function ShiftScheduler() {
     const { currentStore } = useStore();
@@ -98,8 +97,8 @@ export function ShiftScheduler() {
                 <Paper p="md" radius="lg" bg="#1F2937" style={{ border: '1px solid #374151', maxWidth: 350 }}>
                     <Calendar
                         static
-                        getDayProps={(dateStr) => {
-                            const d = new Date(dateStr);
+                        getDayProps={(calendarDate) => {
+                            const d = new Date(calendarDate);
                             return {
                                 selected: date ? d.toDateString() === date.toDateString() : false,
                                 onClick: () => setDate(d)
@@ -162,7 +161,7 @@ export function ShiftScheduler() {
                     <Select
                         label={<Text c="gray.3" size="sm">직원 선택</Text>}
                         placeholder="근무할 직원을 선택하세요"
-                        data={members.map(m => ({ value: m.user_id, label: m.alias || `직원 (${m.user_id.slice(0, 4)})` }))}
+                        data={members.filter(m => m.user_id).map(m => ({ value: m.user_id, label: m.alias || `직원 (${m.user_id?.slice(0, 4) || 'N/A'})` }))}
                         value={selectedMember}
                         onChange={setSelectedMember}
                         styles={{ input: { backgroundColor: '#374151', color: 'white', borderColor: '#4B5563' }, dropdown: { backgroundColor: '#374151', color: 'white' } }}

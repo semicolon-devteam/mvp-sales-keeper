@@ -25,15 +25,15 @@ export async function getStoreMembers(storeId: string) {
 
     if (error) return [];
 
-    // Fetch emails for these user_ids (restricted usually).
-    // For MVP, let's assume we can't display emails easily unless we have a profiles table.
-    // I will return 'id' and 'role'.
-    // NOTE: In a real app we need a proper Profile system.
+    // Return all member data including staff details
     return data.map((m: any) => ({
         id: m.id,
         user_id: m.user_id,
-        email: 'User ' + m.user_id.slice(0, 4), // Placeholder
-        role: m.role
+        email: 'User ' + (m.user_id?.slice(0, 4) || 'N/A'),
+        role: m.role,
+        alias: m.alias,
+        hourly_wage: m.hourly_wage,
+        color: m.color
     }));
 }
 

@@ -15,6 +15,7 @@ import { ReviewWidget } from './_components/ReviewWidget';
 import { ProfitWaterfallCard } from './_components/ProfitWaterfallCard';
 import { EfficiencyGauge } from './_components/EfficiencyGauge';
 import { FinancialBriefing } from './_components/FinancialBriefing';
+import { WeeklyInsightCard } from './_components/WeeklyInsightCard';
 import { getFinancialSnapshot } from './financial-actions';
 
 import { useStore } from '../_contexts/store-context'; // Import useStore
@@ -109,19 +110,19 @@ export default function DashboardPage() {
 
                 {/* Right: AI Console */}
                 <Grid.Col span={{ base: 12, md: 8 }}>
-                    <Box h={500}> {/* Wrapper to enforce height */}
-                        <Box h={500}> {/* Wrapper to enforce height */}
-                            <AiCommandConsole
-                                initialAlerts={data.alerts}
-                                contextData={{
-                                    date: data.date,
-                                    sales: data.sales,
-                                    netIncome: data.netIncome,
-                                    weeklyTrend: data.weeklyTrend,
-                                    breakdown: data.breakdown
-                                }}
-                            />
-                        </Box>
+                    <Box h={500}>
+                        <AiCommandConsole
+                            initialAlerts={data.alerts}
+                            storeId={currentStore?.id}
+                            contextData={{
+                                date: data.date,
+                                sales: data.sales,
+                                netIncome: data.netIncome,
+                                weeklyTrend: data.weeklyTrend,
+                                breakdown: data.breakdown,
+                                storeName: currentStore?.name
+                            }}
+                        />
                     </Box>
                 </Grid.Col>
             </Grid>
@@ -136,6 +137,9 @@ export default function DashboardPage() {
                     </Stack>
                 </SimpleGrid>
             )}
+
+            {/* 1.6 WEEKLY AI INSIGHT */}
+            <WeeklyInsightCard storeId={currentStore?.id} />
 
             {/* 2. STATS GRID (Improved with Smart Badges) */}
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">

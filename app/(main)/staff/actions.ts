@@ -8,14 +8,22 @@ import { revalidatePath } from 'next/cache';
 export async function updateMemberDetails(memberId: string, alias: string, hourlyWage: number, color: string) {
     const supabase = await createClient();
 
-    // Check permission (Owner/Manager only) - omitted for MVP, assuming UI hides it or RLS handles it
+    console.log('[updateMemberDetails] Updating member:', { memberId, alias, hourlyWage, color });
 
-    const { error } = await supabase
+    // Try direct update first (simpler approach)
+    const { data, error } = await supabase
         .from('store_members')
         .update({ alias, hourly_wage: hourlyWage, color })
-        .eq('id', memberId);
+        .eq('id', memberId)
+        .select();
 
-    if (error) throw error;
+    console.log('[updateMemberDetails] Result:', { data, error });
+
+    if (error) {
+        console.error('[updateMemberDetails] Error:', error);
+        throw error;
+    }
+
     revalidatePath('/staff');
 }
 
