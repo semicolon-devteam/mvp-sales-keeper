@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Title, Text, Button, Paper, Stack, Center, Loader, ThemeIcon } from '@mantine/core';
 import { useParams, useRouter } from 'next/navigation';
 import { verifyInvite, joinStore } from '../../(main)/store/members/actions';
@@ -16,13 +16,7 @@ export default function JoinPage() {
     const [joining, setJoining] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (code) {
-            checkInvite();
-        }
-    }, [code]);
-
-    const checkInvite = async () => {
+    const checkInvite = useCallback(async () => {
         try {
             const data = await verifyInvite(code);
             if (!data) {
@@ -35,7 +29,13 @@ export default function JoinPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [code]);
+
+    useEffect(() => {
+        if (code) {
+            checkInvite();
+        }
+    }, [code, checkInvite]);
 
     const handleJoin = async () => {
         setJoining(true);

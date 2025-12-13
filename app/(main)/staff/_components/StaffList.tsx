@@ -3,7 +3,7 @@
 import { Paper, Title, Text, Button, Group, Stack, Avatar, Badge, ActionIcon, Grid, Modal, TextInput, NumberInput, ColorInput } from '@mantine/core';
 import { IconPlus, IconPencil, IconTrash } from '@tabler/icons-react';
 import { useStore } from '../../_contexts/store-context';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { getStoreMembers } from '../../store/members/actions';
 import { updateMemberDetails } from '../actions';
@@ -23,15 +23,15 @@ export function StaffList() {
     const [hourlyWage, setHourlyWage] = useState<string | number>(9860);
     const [color, setColor] = useState('teal');
 
+    const refreshMembers = useCallback(() => {
+        if (currentStore) getStoreMembers(currentStore.id).then(setMembers);
+    }, [currentStore]);
+
     useEffect(() => {
         if (currentStore) {
             refreshMembers();
         }
-    }, [currentStore]);
-
-    const refreshMembers = () => {
-        if (currentStore) getStoreMembers(currentStore.id).then(setMembers);
-    }
+    }, [currentStore, refreshMembers]);
 
     const handleInvite = async () => {
         if (!currentStore) return;

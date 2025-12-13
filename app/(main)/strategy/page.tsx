@@ -2,7 +2,7 @@
 
 import { Title, Text, SimpleGrid, Paper, Stack, Group, ThemeIcon, Badge, Slider, Button, Modal, NumberInput, LoadingOverlay } from '@mantine/core';
 import { IconBulb, IconTrendingUp, IconAlertTriangle, IconRocket, IconChefHat, IconCurrencyWon } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, Label } from 'recharts';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
@@ -22,25 +22,25 @@ export default function StrategyPage() {
     const [isEditOpen, { open: openEdit, close: closeEdit }] = useDisclosure(false);
     const [editCost, setEditCost] = useState<number | ''>(0);
 
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         if (!currentStore) return;
         setLoading(true);
         const res = await fetchStrategyData(currentStore.id);
         if (res.success) {
             setData(res.data || []);
             // Select first item by default if available
-            if (res.data && res.data.length > 0 && !selectedItem) {
-                setSelectedItem(res.data[0]);
+            if (res.data && res.data.length > 0) {
+                setSelectedItem((prev: any) => prev || res.data[0]);
             }
         } else {
             notifications.show({ title: '오류', message: res.error || '데이터 로드 실패', color: 'red' });
         }
         setLoading(false);
-    };
+    }, [currentStore]);
 
     useEffect(() => {
         loadData();
-    }, [currentStore?.id]);
+    }, [loadData]);
 
     useEffect(() => {
         // Reset simulation when item changes
@@ -267,7 +267,7 @@ export default function StrategyPage() {
             <Modal opened={isEditOpen} onClose={closeEdit} title="원가(Cost) 수정" centered>
                 <Stack>
                     <Text size="sm" c="dimmed">
-                        '{selectedItem?.name}'의 1인분 원가를 입력해주세요.<br />
+                        &apos;{selectedItem?.name}&apos;의 1인분 원가를 입력해주세요.<br />
                         (재료비 + 포장비 등 변동비 합계)
                     </Text>
                     <NumberInput

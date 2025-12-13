@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Title, Text, Button, Group, Stack, Avatar, Paper, Badge, ActionIcon, CopyButton, Tooltip } from '@mantine/core';
 import { IconUserPlus, IconTrash, IconCopy, IconMessageCircle } from '@tabler/icons-react';
 import { useStore } from '../../_contexts/store-context';
@@ -13,17 +13,17 @@ export default function MembersPage() {
     const [inviteCode, setInviteCode] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
+    const loadMembers = useCallback(async () => {
+        if (!currentStore) return;
+        const data = await getStoreMembers(currentStore.id);
+        setMembers(data);
+    }, [currentStore]);
+
     useEffect(() => {
         if (currentStore) {
             loadMembers();
         }
-    }, [currentStore]);
-
-    const loadMembers = async () => {
-        if (!currentStore) return;
-        const data = await getStoreMembers(currentStore.id);
-        setMembers(data);
-    };
+    }, [currentStore, loadMembers]);
 
     const handleCreateInvite = async () => {
         if (!currentStore) return;
