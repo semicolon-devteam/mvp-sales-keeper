@@ -41,10 +41,22 @@ export async function getMenuAnalysis(storeId: string) {
 
     if (salesError) throw salesError;
 
-    // Note: menu_items table doesn't exist in current schema
-    // Using sale_items data only with default cost = 0
-    // In future, could add menu_items table for cost tracking
-    const menuMap = new Map<string, any>();
+    // 2.5 Fetch Menu Items for cost data
+    const { data: menuItems } = await supabase
+        .from('menu_items')
+        .select('name, current_cost, category')
+        .eq('user_id', user.id)
+        .eq('store_id', storeId)
+        .eq('is_active', true);
+
+    // Build menu cost map
+    const menuMap = new Map<string, { cost: number; category: string }>();
+    menuItems?.forEach((item: any) => {
+        menuMap.set(item.name, {
+            cost: item.current_cost || 0,
+            category: item.category || '기타'
+        });
+    });
 
     // 3. Aggregate Sales Data
     const analysisMap = new Map<string, { quantity: number, revenue: number, unitPrices: number[] }>();
@@ -104,10 +116,49 @@ export async function getMenuAnalysis(storeId: string) {
     return result.sort((a, b) => b.revenue - a.revenue); // Sort by Revenue desc
 }
 
-export async function updateMenuCost(_storeId: string, _name: string, _cost: number, _price: number) {
-    // Note: menu_items table doesn't exist in current schema
-    // This function is a placeholder for future implementation
-    // For now, cost tracking is not supported
-    console.warn('updateMenuCost: menu_items table not available, cost update skipped');
-    return;
+export async function updateMenuCost(storeId: string, name: string, cost: number, price: number) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Unauthorized');
+
+    // Check if menu item exists
+    const { data: existing } = await supabase
+        .from('menu_items')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('store_id', storeId)
+        .eq('name', name)
+        .single();
+
+    if (existing) {
+        // Update existing menu item
+        const { error } = await supabase
+            .from('menu_items')
+            .update({
+                current_cost: cost,
+                base_cost: cost,
+                selling_price: price,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', existing.id);
+
+        if (error) throw error;
+    } else {
+        // Insert new menu item
+        const { error } = await supabase
+            .from('menu_items')
+            .insert({
+                user_id: user.id,
+                store_id: storeId,
+                name: name,
+                category: '기타',
+                selling_price: price,
+                base_cost: cost,
+                current_cost: cost,
+                safety_margin_percent: 30,
+                is_active: true
+            });
+
+        if (error) throw error;
+    }
 }
