@@ -17,37 +17,38 @@ export async function getMenuAnalysis(storeId: string) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Unauthorized');
 
-    // 1. Fetch Sales (to filter by store/user)
-    const { data: sales, error: salesFetchError } = await supabase
-        .from('mvp_sales')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('store_id', storeId);
+    // 병렬로 Sales ID와 Menu Items를 동시에 가져오기 (성능 최적화)
+    const [salesResult, menuItemsResult] = await Promise.all([
+        supabase
+            .from('mvp_sales')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('store_id', storeId),
+        supabase
+            .from('menu_items')
+            .select('name, current_cost, category')
+            .eq('user_id', user.id)
+            .eq('store_id', storeId)
+            .eq('is_active', true)
+    ]);
 
-    if (salesFetchError) throw salesFetchError;
+    if (salesResult.error) throw salesResult.error;
 
-    const saleIds = sales.map(s => s.id);
+    const saleIds = salesResult.data.map(s => s.id);
+    const menuItems = menuItemsResult.data;
 
     // If no sales found, return empty result early
     if (saleIds.length === 0) {
         return [];
     }
 
-    // 2. Fetch Sale Items
+    // Sale Items 가져오기
     const { data: salesData, error: salesError } = await supabase
         .from('sale_items')
         .select('name, quantity, total_price, unit_price')
         .in('sale_id', saleIds);
 
     if (salesError) throw salesError;
-
-    // 2.5 Fetch Menu Items for cost data
-    const { data: menuItems } = await supabase
-        .from('menu_items')
-        .select('name, current_cost, category')
-        .eq('user_id', user.id)
-        .eq('store_id', storeId)
-        .eq('is_active', true);
 
     // Build menu cost map
     const menuMap = new Map<string, { cost: number; category: string }>();

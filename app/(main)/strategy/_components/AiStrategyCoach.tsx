@@ -62,11 +62,8 @@ export function AiStrategyCoach({ menu, storeId }: AiStrategyCoachProps) {
         }
     };
 
-    useEffect(() => {
-        if (menu && menu.cost > 0) {
-            loadAdvice();
-        }
-    }, [menu?.id]);
+    // AI 분석은 무거우므로 자동 로드하지 않음
+    // 사용자가 직접 "분석 시작" 버튼을 클릭해야 로드됨
 
     // 원가 미입력 시
     if (menu.cost === 0) {

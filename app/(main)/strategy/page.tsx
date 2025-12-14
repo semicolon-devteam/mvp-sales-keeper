@@ -1,6 +1,6 @@
 'use client';
 
-import { Title, Text, SimpleGrid, Paper, Stack, Group, ThemeIcon, Badge, Slider, Button, Modal, NumberInput, LoadingOverlay } from '@mantine/core';
+import { Title, Text, SimpleGrid, Paper, Stack, Group, ThemeIcon, Badge, Slider, Button, Modal, NumberInput } from '@mantine/core';
 import { IconBulb, IconTrendingUp, IconAlertTriangle, IconChefHat, IconCurrencyWon, IconFlame, IconRefresh, IconSpeakerphone, IconSparkles, IconLoader, IconRobot } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
@@ -19,7 +19,6 @@ export default function StrategyPage() {
     const { currentStore } = useStore();
     const router = useRouter();
     const [data, setData] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
     const [selectedItem, setSelectedItem] = useState<any>(null);
 
     // Simulation State
@@ -33,7 +32,6 @@ export default function StrategyPage() {
 
     const loadData = useCallback(async () => {
         if (!currentStore) return;
-        setLoading(true);
         const res = await fetchStrategyData(currentStore.id);
         if (res.success) {
             setData(res.data || []);
@@ -44,7 +42,6 @@ export default function StrategyPage() {
         } else {
             notifications.show({ title: '오류', message: res.error || '데이터 로드 실패', color: 'red' });
         }
-        setLoading(false);
     }, [currentStore]);
 
     useEffect(() => {
@@ -131,8 +128,6 @@ export default function StrategyPage() {
 
     return (
         <Stack gap="xl" pb={100} pos="relative">
-            <LoadingOverlay visible={loading} overlayProps={{ radius: "sm", blur: 2 }} />
-
             {/* Tab Navigation */}
             <TabNavigation tabs={TAB_GROUPS.strategy} />
 
