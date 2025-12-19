@@ -73,15 +73,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
             const stores = validMembers.map(m => m.stores).filter(Boolean);
 
-            // 2. AUTO-MIGRATION LOGIC
-            if (stores.length === 0) {
-                console.log('No stores found. Creating default store & migrating data...');
-                try {
-                    await createDefaultStoreImpl(); // Use internal impl to avoid dep cycle if any
-                } catch (err) {
-                    console.error('Auto-migration failed silently:', err);
-                }
-            } else {
+            // 2. Set stores state (no auto-creation)
+            if (stores.length > 0) {
                 setMemberships(validMembers);
                 setMyStores(stores);
 
@@ -116,7 +109,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             console.log('Creating default store...');
             const { data: newStore, error: createError } = await supabase
                 .from('stores')
-                .insert({ name: '1호점', owner_id: user.id })
+                .insert({ name: '월하화', owner_id: user.id })
                 .select()
                 .single();
 
